@@ -1,183 +1,114 @@
 import time
-
-import serial.tools.list_ports
+from threading import Thread
 
 from roboticsnt.commandProtocol.arduino.arduino_connection import ArduinoConnection, ArduinoCommand
 from roboticsnt.serial.serial_port import SerialPort
 
 
-def connect_handler():
+class ControlArduinoThread(Thread):
 
-    print("Device connected to serial port")
+    def __init__(self):
+        super().__init__()
 
-    #  ================= DIGITAL PINS ================
+        port = SerialPort.get_device_list()[0]
+        print(port)
 
-    # pin = 13
-    #
-    # connection.set_pin_mode(pin, ArduinoConnection.PIN_MODE_OUTPUT)
-    #
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.LOW)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.HIGH)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.LOW)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.HIGH)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.LOW)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.HIGH)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.LOW)
-    # time.sleep(1)
-    # connection.set_digital_pin(pin, ArduinoConnection.HIGH)
-    # time.sleep(1)
+        self.connection = ArduinoConnection()
 
-    # pins_list = [33, 27, 23, 25, 31, 35, 37, 29, 45, 49, 41, 43, 39, 47, 53, 51, 24, 26, 22, 28]
-    # for i in pins_list:
-    #     connection.set_pin_mode(i, ArduinoConnection.PIN_MODE_OUTPUT)
-    #     connection.set_digital_pin(i, ArduinoConnection.HIGH)
+        self.connection.add_on_connect_event_handler(self.connect_handler)
+        self.connection.add_on_disconnect_event_handler(self.disconnect_handler)
+        self.connection.add_on_command_event_handler(self.command_handler)
+        self.connection.add_on_error_event_handler(self.error_handler)
 
-    # while connection.is_connected():
-    #     for i in pins_list:
-    #         connection.set_digital_pin(i, ArduinoConnection.LOW)
-    #         time.sleep(0.5)
-    #
-    #     for i in pins_list:
-    #         connection.set_digital_pin(i, ArduinoConnection.HIGH)
-    #         time.sleep(0.5)
+        self.connection.connect(port)
+        # self.connection.set_motor_speed(0, 600)
 
-    # connection.add_digital_pin_listener(13, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
-    # connection.add_digital_pin_listener(32, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
-    # connection.add_digital_pin_listener(30, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
-    # connection.add_digital_pin_listener(28, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
+    def run(self):
+        while self.connection.is_connected():
 
-    # connection.get_digital_pin(pin)
+            # self.test_stepper_motor()
+            self.test_digital_pins()
 
-    #  ================= ABSOLUTE ENCODER ================
+            self.connection.close()
 
-    # pins_list = [28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
-    # connection.add_absolute_encoder_listener(pins_list)
+    def connect_handler(self):
+        print("Device connected to serial port")
+        self.start()
 
-    #  ================= GECKODRIVE STEPPER MOTOR ================
+    def command_handler(self, command):
+        print("New command, type: ", command.get_type())
 
-    time.sleep(1)
+        if command.get_type() == ArduinoCommand.TYPE_ABSOLUTE_ENCODER_ANGLE:
+            # print("Integer data ", command.get_integer_data(1))
+            # print("Integer data ", command.get_data()[0])
+            # print("Float data ", command.get_float_data(4, 1))
+            # print("Angle change : ")
+            # print(command.get_integer_data(1, 4))
+            print(command.get_float_data(4, 0))
 
-    motor_index = 0
+        elif command.get_type() == ArduinoCommand.TYPE_DIGITAL_PIN_VALUE:
+            print("DIGITAL PIN VALUE CHANGE")
+            print(command.get_integer_data(1, 0))
+            print(command.get_integer_data(1, 1))
 
-    connection.add_motor(200, 10, 11)
+    def error_handler(self, message):
+        print("Error. Message: ", message)
 
-    connection.set_motor_speed(motor_index, 200)
+    def disconnect_handler(self):
+        print("Disconnected")
 
-    connection.motor_rotate_turns(motor_index, 20)
-    time.sleep(10)
-    # connection.motor_rotate_turns(motor_index, 20)
-    # connection.stop_motor(motor_index)
-    connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_CLOCKWISE)
-    print("2")
-    connection.motor_rotate_turns(motor_index, 6)
-    time.sleep(8)
+    def test_stepper_motor(self):
+        time.sleep(1)
 
-    # connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_BACKWARD)
-    # time.sleep(6)
-    # connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_FORWARD)
-    # time.sleep(6)
-    # connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_BACKWARD)
-    # time.sleep(6)
+        motor_index = 0
 
-    connection.stop_motor(motor_index)
+        self.connection.add_motor(200, 10, 11)
 
-    # connection.start_motor(motor_index)
-    # print("Speed:", 1000)
-    # connection.set_motor_speed(motor_index, 1000)
-    # time.sleep(4)
-    # print("Speed:", 2000)
-    # connection.set_motor_speed(motor_index, 2000)
-    # time.sleep(4)
-    # print("Speed:", 3000)
-    # connection.set_motor_speed(motor_index, 3000)
-    # time.sleep(4)
-    # print("Speed:", 4000)
-    # connection.set_motor_speed(motor_index, 4000)
-    # time.sleep(4)
-    # print("Speed:", 5000)
-    # connection.set_motor_speed(motor_index, 5000)
-    # time.sleep(4)
-    # print("Speed:", 6000)
-    # connection.set_motor_speed(motor_index, 6000)
-    # time.sleep(4)
-    # print("Speed:", 7000)
-    # connection.set_motor_speed(motor_index, 7000)
-    # time.sleep(4)
-    # print("Speed:", 8000)
-    # connection.set_motor_speed(motor_index, 8000)
-    # time.sleep(2)
-    # print("Speed:", 9000)
-    # connection.set_motor_speed(motor_index, 9000)
-    # time.sleep(2)
-    # print("Speed:", 9500)
-    # connection.set_motor_speed(motor_index, 9500)
+        self.connection.set_motor_speed(motor_index, 200)
 
-    # connection.start_motor(motor_index)
-    # time.sleep(3)
-    # connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_BACKWARD)
-    # time.sleep(3)
-    # connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_FORWARD)
-    # time.sleep(3)
-    # connection.stop_motor(motor_index)
-    # time.sleep(3)
+        self.connection.motor_rotate_turns(motor_index, 50)
+        time.sleep(20)
+        self.connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_CLOCKWISE)
+        self.connection.motor_rotate_turns(motor_index, 6)
+        # connection.stop_motor(motor_index)
+        time.sleep(5)
 
-    # ============= SET ANALOG ===================
+    def test_digital_pins(self):
+        pin = 13
+        self.connection.set_pin_mode(pin, ArduinoConnection.PIN_MODE_OUTPUT)
 
-    # time.sleep(1)
-    # connection.set_analog_pin(pin, 10)
-    # time.sleep(1)
-    # connection.set_analog_pin(pin, 50)
-    # time.sleep(1)
-    # connection.set_analog_pin(pin, 100)
-    # time.sleep(1)
-    # connection.set_analog_pin(pin, 150)
-    # time.sleep(1)
-    # connection.set_analog_pin(pin, 200)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.LOW)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.HIGH)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.LOW)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.HIGH)
 
-    connection.close()
+    def test_analog_pins(self):
+        pin = 11
+        self.connection.set_analog_pin(pin, 10)
+        time.sleep(1)
+        self.connection.set_analog_pin(pin, 50)
+        time.sleep(1)
+        self.connection.set_analog_pin(pin, 100)
+        time.sleep(1)
+        self.connection.set_analog_pin(pin, 150)
+        time.sleep(1)
+        self.connection.set_analog_pin(pin, 200)
+        time.sleep(1)
+
+    def test_digital_listeners(self):
+        self.connection.add_digital_pin_listener(13, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
+        self.connection.add_digital_pin_listener(32, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
+        self.connection.add_digital_pin_listener(30, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
+        self.connection.add_digital_pin_listener(28, ArduinoConnection.PIN_MODE_INPUT_PULLUP)
+
+    def test_absolute_encoder(self):
+        pins_list = [28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
+        self.connection.add_absolute_encoder_listener(pins_list)
 
 
-def disconnect_handler():
-    print("Serial port connection closed")
+ControlArduinoThread()
 
-
-def command_handler(command):
-    # print("NEW COMMAND!!!")
-    # print(command.get_data()[0])
-    # print(command.get_data()[1])
-    if command.get_type() == ArduinoCommand.TYPE_ABSOLUTE_ENCODER_ANGLE:
-        # print("Integer data ", command.get_integer_data(1))
-        # print("Integer data ", command.get_data()[0])
-        # print("Float data ", command.get_float_data(4, 1))
-        # print("Angle change : ")
-        # print(command.get_integer_data(1, 4))
-        print(command.get_float_data(4, 0))
-
-    elif command.get_type() == ArduinoCommand.TYPE_DIGITAL_PIN_VALUE:
-        print("DIGITAL PIN VALUE CHANGE")
-        print(command.get_integer_data(1, 0))
-        print(command.get_integer_data(1, 1))
-
-
-def error_handler(message):
-    print("Error. Message: ", message)
-
-
-port = SerialPort.get_device_list()[0]
-print(port)
-
-connection = ArduinoConnection()
-
-connection.add_on_connect_event_handler(connect_handler)
-connection.add_on_disconnect_event_handler(disconnect_handler)
-connection.add_on_command_event_handler(command_handler)
-connection.add_on_error_event_handler(error_handler)
-
-connection.connect(port)

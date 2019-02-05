@@ -1,5 +1,4 @@
 import struct
-from abc import abstractmethod
 from threading import Thread
 
 from roboticsnt.event import Event
@@ -21,14 +20,6 @@ class ProtocolConnection(Thread):
         self.__on_error_event = Event()
 
         self._parser.on_command_event.handle(self.__on_parser_detect_command)
-
-    @abstractmethod
-    def send_command(self, command):
-        pass
-
-    @abstractmethod
-    def close(self):
-        self._dispatch_on_disconnect()
 
     # Add Handlers
 
