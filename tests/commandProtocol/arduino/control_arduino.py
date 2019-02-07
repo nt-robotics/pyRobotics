@@ -26,8 +26,8 @@ class ControlArduinoThread(Thread):
     def run(self):
         while self.connection.is_connected():
 
-            # self.test_stepper_motor()
-            self.test_digital_pins()
+            self.test_stepper_motor()
+            # self.test_digital_pins()
 
             self.connection.close()
 
@@ -56,6 +56,8 @@ class ControlArduinoThread(Thread):
 
     def disconnect_handler(self):
         print("Disconnected")
+        if loop_tests:
+            ControlArduinoThread()
 
     def test_stepper_motor(self):
         time.sleep(1)
@@ -66,8 +68,8 @@ class ControlArduinoThread(Thread):
 
         self.connection.set_motor_speed(motor_index, 200)
 
-        self.connection.motor_rotate_turns(motor_index, 50)
-        time.sleep(20)
+        self.connection.motor_rotate_turns(motor_index, 8)
+        time.sleep(6)
         self.connection.set_motor_direction(motor_index, ArduinoConnection.MOTOR_DIRECTION_CLOCKWISE)
         self.connection.motor_rotate_turns(motor_index, 6)
         # connection.stop_motor(motor_index)
@@ -77,6 +79,14 @@ class ControlArduinoThread(Thread):
         pin = 13
         self.connection.set_pin_mode(pin, ArduinoConnection.PIN_MODE_OUTPUT)
 
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.LOW)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.HIGH)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.LOW)
+        time.sleep(1)
+        self.connection.set_digital_pin(pin, ArduinoConnection.HIGH)
         time.sleep(1)
         self.connection.set_digital_pin(pin, ArduinoConnection.LOW)
         time.sleep(1)
@@ -110,5 +120,6 @@ class ControlArduinoThread(Thread):
         self.connection.add_absolute_encoder_listener(pins_list)
 
 
+loop_tests = False
 ControlArduinoThread()
 
