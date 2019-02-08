@@ -30,8 +30,6 @@ class ArduinoConnection(ProtocolConnection):
     def __init__(self, port=None, speed=SerialPort.BAUDRATE_115200, auto_connect=False, use_change_pins_time_filter=True):
         super().__init__()
 
-        print("Create arduino connection")
-
         self.__is_serial_port_connected = False
         self.__is_auth_on_arduino = False
 
@@ -61,20 +59,18 @@ class ArduinoConnection(ProtocolConnection):
 
             if now - self.__connect_watchdog_last_time > self.__CONNECT_AND_WATCHDOG_INTERVAL:
                 if self.__is_auth_on_arduino:
-                    print("Send watchdog")
                     self.__send_watchdog_command()
                 else:
-                    print("Send try connect")
                     self.__send_try_connect_command()
 
                 self.__connect_watchdog_last_time = now
-
         try:
             self.__serial_manager.close()
         except SerialException as msg:
             super()._dispatch_on_error(msg)
 
-        self._dispatch_on_disconnect()
+        super()._dispatch_on_disconnect()
+        super().clear_event_handlers()
 
     def connect(self, port=None):
         if self.__port is None and port is None:
@@ -90,7 +86,6 @@ class ArduinoConnection(ProtocolConnection):
         except ConnectionError as msg:
             super()._dispatch_on_error(msg)
         else:
-            print("Arduino Serial connected")
             self.__is_serial_port_connected = True
             self.start()
 

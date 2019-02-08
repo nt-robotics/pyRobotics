@@ -21,6 +21,13 @@ class ProtocolConnection(Thread):
 
         self._parser.on_command_event.handle(self.__on_parser_detect_command)
 
+    # Clear event handlers
+    def clear_event_handlers(self):
+        self.__on_connect_event.clear_handlers()
+        self.__on_disconnect_event.clear_handlers()
+        self.__on_command_event.clear_handlers()
+        self.__on_error_event.clear_handlers()
+
     # Add Handlers
 
     def add_on_connect_event_handler(self, handler):
@@ -114,7 +121,6 @@ class _Parser(object):
     def __add_to_buffer(self, bt):
         if self.__bytes_in_buffer + 1 > self.__buffer_size:
             self.__clear_buffer()
-            print("Parser. Buffer overflow")
             raise Exception("Parser. Buffer overflow")
 
         self.__buffer[self.__bytes_in_buffer] = bt
