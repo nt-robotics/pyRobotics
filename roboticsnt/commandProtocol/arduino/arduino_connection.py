@@ -15,7 +15,10 @@ class ArduinoConnection(ProtocolConnection):
     MOTOR_DIRECTION_CLOCKWISE = 0x1
     MOTOR_DIRECTION_COUNTERCLOCKWISE = 0x0
     # 2147483 - max turns count (Ограничение ардуино long 2147483 * 2000(steps count))
-    _MAX_TURNS_COUNT = 2147483
+    _MOTOR_MAX_TURNS_COUNT = 2147483
+
+    MOTOR_STATE_STOPPED = 0x00
+    MOTOR_STATE_RUNNABLE = 0x01
 
     LOW = 0x0
     HIGH = 0x1
@@ -143,7 +146,10 @@ class ArduinoConnection(ProtocolConnection):
     def add_absolute_encoder_listener(self, pins_list):
         self._send_command(Command(ArduinoCommand.TYPE_ADD_ABSOLUTE_ENCODER_LISTENER, bytes(pins_list)))
 
-    # Motors
+    def add_motor_state_listener(self, motor_index):
+        self._send_command(Command(ArduinoCommand.TYPE_ADD_MOTOR_STATE_LISTENER, bytes([motor_index])))
+
+# Motors
     def add_motor(self, steps_count, step_pin, dir_pin):
         self._send_command(Command(ArduinoCommand.TYPE_ADD_MOTOR, bytes([steps_count, step_pin, dir_pin])))
 
@@ -154,9 +160,10 @@ class ArduinoConnection(ProtocolConnection):
         self._send_command(Command(ArduinoCommand.TYPE_STOP_MOTOR, bytes([index])))
 
     def motor_rotate_turns(self, index, turns_count):
-        if turns_count > self._MAX_TURNS_COUNT:
-            print("Error. Turns count value must be between 1 and ", self._MAX_TURNS_COUNT)
-            return
+        if turns_count > self._MOTOR_MAX_TURNS_COUNT:
+            error_mes = "Error. Turns count value must be between 1 and " + str(self._MOTOR_MAX_TURNS_COUNT)
+            # super()._dispatch_on_error(error_mes)
+            raise Exception(error_mes)
         turns_count_bytes = turns_count.to_bytes(4, byteorder='big')
         data = bytes([index]) + turns_count_bytes
         self._send_command(Command(ArduinoCommand.TYPE_MOTOR_ROTATE_TURNS, data))
@@ -263,6 +270,7 @@ class ArduinoCommand:
     TYPE_MOTOR_ROTATE_TURNS = 0x35
 
     TYPE_ADD_ABSOLUTE_ENCODER_LISTENER = 0x40
+    TYPE_ADD_MOTOR_STATE_LISTENER = 0x41
 
     TYPE_SET_ANALOG = 0x50
     TYPE_SET_DIGITAL = 0x51
@@ -281,6 +289,7 @@ class ArduinoCommand:
 
     TYPE_DIGITAL_PIN_VALUE = 0x71
     TYPE_ABSOLUTE_ENCODER_ANGLE = 0x72
+    TYPE_MOTOR_STATE = 0x73
 
     # Errors
     TYPE_ERROR = 0x60

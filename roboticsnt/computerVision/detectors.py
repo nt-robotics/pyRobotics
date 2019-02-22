@@ -10,6 +10,10 @@ class ObjectDetector(object):
         self.sess = None
         # self.max_score = max_score
 
+        # Reset the graph. If you do not do this when creating a new ObjectDetection instance with a different model,
+        # tensorflow model does not change
+        tf.reset_default_graph()
+
         f = tf.gfile.FastGFile(model_path, 'rb')
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
@@ -31,22 +35,14 @@ class ObjectDetector(object):
 
 class ColorDetector(object):
 
-    def __init__(self, h_min=0, h_max=255, s_min=0, s_max=255, v_min=0, v_max=255):
+    def __init__(self, h_min=0, h_max=255, s_min=0, s_max=255, v_min=0, v_max=255, blur_size=3):
         self.h_min = h_min
         self.h_max = h_max
         self.s_min = s_min
         self.s_max = s_max
         self.v_min = v_min
         self.v_max = v_max
-
-        # self.h_1 = 65
-        # self.h_2 = 159
-        # self.s_1 = 0
-        # self.s_2 = 255
-        # self.v_1 = 0
-        # self.v_2 = 255
-
-        self.blur_size = 3
+        self.blur_size = blur_size
 
     def detect(self, original_img):
         blur_image = cv.blur(original_img, (self.blur_size, self.blur_size))
