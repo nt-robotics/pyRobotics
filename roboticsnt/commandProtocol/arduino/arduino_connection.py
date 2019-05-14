@@ -149,7 +149,7 @@ class ArduinoConnection(ProtocolConnection):
     def add_motor_state_listener(self, motor_index):
         self._send_command(Command(ArduinoCommand.TYPE_ADD_MOTOR_STATE_LISTENER, bytes([motor_index])))
 
-# Motors
+    # Motors
     def add_motor(self, steps_count, step_pin, dir_pin):
         self._send_command(Command(ArduinoCommand.TYPE_ADD_MOTOR, bytes([steps_count, step_pin, dir_pin])))
 
