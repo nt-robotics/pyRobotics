@@ -1,14 +1,14 @@
 
 import numpy as np
+import cv2
 
-a = np.arange(32).reshape(2, 4, -1)
+image = np.zeros((120, 120), np.float32)
 
-print(a)
+image[0:20, 50:80] = 100
 
-print("")
-print("")
-print("")
+window = cv2.namedWindow("Image")
 
-print(a[:, ..., 1:3])
+cv2.imshow(window, image)
 
+cv2.waitKey(20000)
 
