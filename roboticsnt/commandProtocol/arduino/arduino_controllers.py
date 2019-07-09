@@ -273,8 +273,8 @@ class ArduinoGeckoDriveG540Controller(ArduinoConnection):
     MOTOR_STATE_STOPPED = 0x00
     MOTOR_STATE_RUNNABLE = 0x01
 
-    def __init__(self, port):
-        super().__init__(port)
+    def __init__(self, port=None, speed=SerialPort.BAUDRATE_115200, auto_connect=False, use_change_pins_time_filter=True):
+        super().__init__(port, speed, auto_connect, use_change_pins_time_filter)
 
     def add_motor_state_listener(self, motor_index):
         self._send_command(Command(ArduinoCommand.TYPE_ADD_MOTOR_STATE_LISTENER, bytes([motor_index])))
