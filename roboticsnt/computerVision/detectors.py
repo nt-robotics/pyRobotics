@@ -14,7 +14,7 @@ class ObjectDetector(object):
         # tensorflow model does not change
         tf.reset_default_graph()
 
-        f = tf.gfile.FastGFile(model_path, 'rb')
+        f = tf.gfile.GFile(model_path, 'rb')
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
 
@@ -56,4 +56,3 @@ class ColorDetector(object):
         # _, contours, hierarchy = cv.findContours(range_image, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
 
         return range_image
-

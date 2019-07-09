@@ -1,5 +1,6 @@
 # my pycashe
 
+.idea/
 
 roboticsnt/__pycache__/
 roboticsnt/commandProtocol/__pycache__/
