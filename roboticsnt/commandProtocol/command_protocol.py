@@ -181,4 +181,6 @@ class Command(object):
         return int.from_bytes(self.__data[start_byte:start_byte+bytes_count], byteorder='big')
 
     def get_float_data(self, bytes_count=8, start_byte=0):
-        return struct.unpack('!f', self.__data[start_byte:start_byte+bytes_count])[0]
+        # return struct.unpack('!f', self.__data[start_byte:start_byte+bytes_count])[0]
+        # '!f' do not working with Arduino
+        return struct.unpack('<f', self.__data[start_byte:start_byte+bytes_count])[0]

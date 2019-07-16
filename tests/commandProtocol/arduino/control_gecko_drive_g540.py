@@ -10,6 +10,8 @@ class ControlMotorThread(Thread):
     def __init__(self):
         super().__init__()
 
+        self._motor_direction = None
+
         port = SerialPort.get_device_list()[0]
         print(port)
 
@@ -66,33 +68,29 @@ class ControlMotorThread(Thread):
             print("DIGITAL PIN VALUE CHANGE")
             print(command.get_integer_data(1, 0))
             print(command.get_integer_data(1, 1))
-        # elif command.get_type() == ArduinoCommand.TYPE_MOTOR_STATE:
-        #     print("Motor state command")
-        #     print("Motor index - ", command.get_integer_data(1, 0))
-        #     print("Motor state - ", command.get_integer_data(1, 1))
-        #
-        #     state = command.get_integer_data(1, 1)
-        #
-        #     if state == ArduinoConnection.MOTOR_STATE_STOPPED:
-        #
-        #         if self._motor_direction == ArduinoConnection.MOTOR_DIRECTION_COUNTERCLOCKWISE:
-        #             self._motor_direction = ArduinoConnection.MOTOR_DIRECTION_CLOCKWISE
-        #             self.connection.set_motor_direction(0, ArduinoConnection.MOTOR_DIRECTION_CLOCKWISE)
-        #         else:
-        #             self._motor_direction = ArduinoConnection.MOTOR_DIRECTION_COUNTERCLOCKWISE
-        #             self.connection.set_motor_direction(0, ArduinoConnection.MOTOR_DIRECTION_COUNTERCLOCKWISE)
-        #
-        #         self.connection.motor_rotate_turns(0, 12)
+        elif command.get_type() == ArduinoCommand.TYPE_MOTOR_STATE:
+            print("Motor state command")
+            print("Motor index - ", command.get_integer_data(1, 0))
+            print("Motor state - ", command.get_integer_data(1, 1))
+
+            state = command.get_integer_data(1, 1)
+
+            if state == ArduinoGeckoDriveG540Controller.MOTOR_STATE_STOPPED:
+
+                if self._motor_direction == ArduinoGeckoDriveG540Controller.MOTOR_DIRECTION_COUNTERCLOCKWISE:
+                    self._motor_direction = ArduinoGeckoDriveG540Controller.MOTOR_DIRECTION_CLOCKWISE
+                    self.connection.set_motor_direction(0, ArduinoGeckoDriveG540Controller.MOTOR_DIRECTION_CLOCKWISE)
+                else:
+                    self._motor_direction = ArduinoGeckoDriveG540Controller.MOTOR_DIRECTION_COUNTERCLOCKWISE
+                    self.connection.set_motor_direction(0, ArduinoGeckoDriveG540Controller.MOTOR_DIRECTION_COUNTERCLOCKWISE)
+
+                self.connection.motor_rotate_turns(0, 12)
 
     def error_handler(self, message):
         print("Error. Message: ", message)
 
     def disconnect_handler(self):
         print("Disconnected")
-
-
-
-
 
 
 ControlMotorThread()

@@ -76,7 +76,7 @@ class ArduinoConnection(ProtocolConnection):
         while self.__is_serial_port_connected:
             data = self._read()
             if data is not None:
-                print("DATA : ", data)
+                # print("DATA : ", data)
                 self._parser.parse(data)
 
             now = time.time() * 1000
@@ -259,9 +259,6 @@ class ArduinoPinsController(ArduinoConnection):
             self.set_pin_mode(pin, pin_mode)
         self._send_command(Command(ArduinoCommand.TYPE_ADD_DIGITAL_LISTENER, bytes([pin])))
 
-    def add_absolute_encoder_listener(self, pins_list):
-        self._send_command(Command(ArduinoCommand.TYPE_ADD_ABSOLUTE_ENCODER_LISTENER, bytes(pins_list)))
-
 
 class ArduinoGeckoDriveG540Controller(ArduinoConnection):
 
@@ -305,3 +302,30 @@ class ArduinoGeckoDriveG540Controller(ArduinoConnection):
         speed_bytes = speed.to_bytes(4, byteorder='big')
         data = bytes([index]) + speed_bytes
         self._send_command(Command(ArduinoCommand.TYPE_SET_MOTOR_SPEED, data))
+
+
+class ArduinoEncoderController(ArduinoConnection):
+
+    def __init__(self, port=None, speed=SerialPort.BAUDRATE_115200, auto_connect=False, use_change_pins_time_filter=True):
+        super().__init__(port, speed, auto_connect, use_change_pins_time_filter)
+
+        self._angle = None
+        self.add_on_command_event_handler(self._on_command_handler)
+
+    ############
+    # Public
+    ############
+
+    def add_absolute_encoder_listener(self, pins_list):
+        self._send_command(Command(ArduinoCommand.TYPE_ADD_ABSOLUTE_ENCODER_LISTENER, bytes(pins_list)))
+
+    def get_angle(self):
+        return self._angle
+
+    ############
+    # Private
+    ############
+
+    def _on_command_handler(self, command):
+        if command.get_type() == ArduinoCommand.TYPE_ABSOLUTE_ENCODER_ANGLE:
+            self._angle = command.get_float_data(4, 0)
