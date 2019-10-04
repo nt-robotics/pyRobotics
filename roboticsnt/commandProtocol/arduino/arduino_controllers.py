@@ -312,6 +312,8 @@ class ArduinoEncoderController(ArduinoConnection):
         self._angle = None
         self.add_on_command_event_handler(self._on_command_handler)
 
+        # self.__last_command_time = millis()
+
     ############
     # Public
     ############
@@ -329,3 +331,7 @@ class ArduinoEncoderController(ArduinoConnection):
     def _on_command_handler(self, command):
         if command.get_type() == ArduinoCommand.TYPE_ABSOLUTE_ENCODER_ANGLE:
             self._angle = command.get_float_data(4, 0)
+
+            # now = millis()
+            # print("COMMAND DELTA: ", now - self.__last_command_time)
+            # self.__last_command_time = now

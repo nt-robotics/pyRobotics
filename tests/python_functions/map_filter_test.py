@@ -1,4 +1,17 @@
 
+iterator = iter('Hello')
+print(iterator.__next__())
+
+
+for index, item in enumerate('Hello'):
+    print(index)
+    print(item)
+
+
+test_list = [i**2 for i in range(8) if i % 2 == 0]
+
+print(test_list)
+
 
 # map
 def map_func(x):

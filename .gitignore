@@ -2,6 +2,9 @@
 
 .idea/
 
+# Module emulate Jetson and Raspberry PI GPIOs
+Jetson/
+
 roboticsnt/__pycache__/
 roboticsnt/commandProtocol/__pycache__/
 roboticsnt/commandProtocol/arduino/__pycache__/

@@ -26,15 +26,15 @@ class ControlMotorThread(Thread):
 
     def run(self):
         self.connection.add_motor(200, 6, 7)
-        self.connection.set_motor_speed(0, 800)
+        self.connection.set_motor_speed(0, 100)
         self.connection.motor_rotate_turns(0, 200)
 
-        # time.sleep(5)
-        # print(100)
-        # self.connection.set_motor_speed(0, 100)
-        # time.sleep(5)
-        # print(200)
-        # self.connection.set_motor_speed(0, 200)
+        time.sleep(2)
+        print(100)
+        self.connection.set_motor_speed(0, 100)
+        time.sleep(3)
+        print(200)
+        # self.connection.set_motor_speed(0, 0)
         # time.sleep(5)
         # print(300)
         # self.connection.set_motor_speed(0, 300)

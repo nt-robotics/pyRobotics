@@ -53,6 +53,4 @@ class ColorDetector(object):
 
         range_image = cv.inRange(hsv_image, low_color, high_color)
 
-        # _, contours, hierarchy = cv.findContours(range_image, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-
         return range_image
