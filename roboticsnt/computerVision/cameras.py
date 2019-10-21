@@ -12,11 +12,14 @@ from roboticsnt.event import Event
 
 class BaslerMultipleCamera(Thread):
 
+    MAX_FRAME_WIDTH = 1280
+    MAX_FRAME_HEIGHT = 960
+
     @staticmethod
     def get_device_count() -> int:
         return len(pylon.TlFactory.GetInstance().EnumerateDevices())
 
-    def __init__(self, cameras_count: int = None):
+    def __init__(self, cameras_count: int = None, frame_width: int = MAX_FRAME_WIDTH, frame_height: int = MAX_FRAME_HEIGHT):
         super().__init__()
 
         self.__camera_thread = None
@@ -46,11 +49,11 @@ class BaslerMultipleCamera(Thread):
             camera.Attach(tl_factory.CreateDevice(device_list[i]))
             camera.Open()
 
-            camera.Width.SetValue(600)
-            camera.Height.SetValue(300)
+            camera.Width.SetValue(frame_width)
+            camera.Height.SetValue(frame_height)
 
             # camera.DeviceLinkThroughputLimit.SetValue(200000000)
-            camera.DeviceUserID.SetValue("CAMERA_" + str(i))
+            # camera.DeviceUserID.SetValue("CAMERA_" + str(i))
 
         self.__converter = pylon.ImageFormatConverter()
         self.__converter.OutputPixelFormat = pylon.PixelType_BGR8packed
