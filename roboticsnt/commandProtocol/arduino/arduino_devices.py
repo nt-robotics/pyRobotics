@@ -76,11 +76,11 @@ class EncoderSpeedometer(object):
 
     def _on_connect(self):
         self.__encoder_connection.add_absolute_encoder_listener(self.__pins_list)
-        self.__check_angle_thread = CheckEncoderAngleThread(self.__encoder_connection, self.__speed_change_event, self.__one_turn_distance)
+        self.__check_angle_thread = _CheckEncoderAngleThread(self.__encoder_connection, self.__speed_change_event, self.__one_turn_distance)
         self.__check_angle_thread.start()
 
 
-class CheckEncoderAngleThread(Thread):
+class _CheckEncoderAngleThread(Thread):
 
     def __init__(self, encoder_connection, speed_change_event, one_turn_distance):
         super().__init__()

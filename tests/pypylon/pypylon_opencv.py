@@ -3,17 +3,17 @@ import cv2
 
 tlFactory = pylon.TlFactory.GetInstance()
 
-# 1) Create camera by index
-cam_index = 1
-max_cameras_number = 2
-
-devices = tlFactory.EnumerateDevices()
-cameras = pylon.InstantCameraArray(min(len(devices), max_cameras_number))
-camera = cameras[cam_index]
-camera.Attach(tlFactory.CreateDevice(devices[cam_index]))
+# # 1) Create camera by index
+# cam_index = 1
+# max_cameras_number = 2
+#
+# devices = tlFactory.EnumerateDevices()
+# cameras = pylon.InstantCameraArray(min(len(devices), max_cameras_number))
+# camera = cameras[cam_index]
+# camera.Attach(tlFactory.CreateDevice(devices[cam_index]))
 
 # # 2) Create first camera
-# camera = pylon.InstantCamera(tlFactory.CreateFirstDevice())
+camera = pylon.InstantCamera(tlFactory.CreateFirstDevice())
 
 camera.Open()
 
@@ -29,10 +29,10 @@ print("Using device ", model_name)
 print("throughput_limit ", throughput_limit)
 print("device_user_id ", device_user_id)
 
-camera.Width.SetValue(600)
-camera.Height.SetValue(300)
-camera.DeviceLinkThroughputLimit.SetValue(21000000)
-camera.DeviceUserID.SetValue("CAMERA_0")
+# camera.Width.SetValue(600)
+# camera.Height.SetValue(300)
+# camera.DeviceLinkThroughputLimit.SetValue(21000000)
+# camera.DeviceUserID.SetValue("CAMERA_0")
 # camera.Width = 600                            # И так работает
 # camera.Height = 300                           # И так работает
 # camera.DeviceLinkThroughputLimit = 21000000   # И так работает
@@ -55,8 +55,15 @@ while camera.IsGrabbing():
         # Access the image data
         image = converter.Convert(grabResult)
         img = image.GetArray()
-        cv2.namedWindow('title', cv2.WINDOW_NORMAL)
-        cv2.imshow('title', img)
+
+        red_channel = img.copy()
+        red_channel[:, :, 0] = 0
+        red_channel[:, :, 1] = 0
+
+        cv2.namedWindow('RGB', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('R channel', cv2.WINDOW_NORMAL)
+        cv2.imshow('RGB', img)
+        cv2.imshow('R channel', red_channel)
         k = cv2.waitKey(1)
         if k == 27:
             break

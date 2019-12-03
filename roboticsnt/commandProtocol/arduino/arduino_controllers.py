@@ -94,7 +94,7 @@ class ArduinoConnection(ProtocolConnection):
             super()._dispatch_on_error(msg)
 
         super()._dispatch_on_disconnect()
-        super().clear_event_handlers()
+        super()._clear_event_handlers()
 
     def connect(self, port=None):
         if self.__port is None and port is None:
@@ -212,6 +212,12 @@ class ArduinoConnection(ProtocolConnection):
 
         else:
             super()._dispatch_on_command(command)
+
+
+# !!!
+# Контроллеры не надо наследовать от Connection, лучше экземпляр
+# Connection передавать в конструктор контроллера при создании,
+# тогда можно будет использовать несколько контроллеров на одно соединение
 
 
 class ArduinoPinsController(ArduinoConnection):

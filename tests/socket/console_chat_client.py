@@ -13,7 +13,7 @@ print("Connected to ", HOST)
 
 # sock.sendall(str.encode("Hello\n"))
 
-# data = 'Hello from client\r\n'
+# data = 'Hello from socket_connection\r\n'
 # data = input("Input message:")
 
 # sock.send(str.encode(data + '\n'))
