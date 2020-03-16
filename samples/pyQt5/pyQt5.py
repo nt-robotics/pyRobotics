@@ -6,7 +6,8 @@ from PyQt5.uic import loadUi
 
 class MainWindow(QWidget):
 
-    __GUI_PATH = "/home/user/Projects/pyCharm/pyRobotics/tests/pyQt5/gui.ui"
+    # __GUI_PATH = "/home/user/Projects/pyCharm/pyRobotics/samples/pyQt5/gui.ui"
+    __GUI_PATH = "/samples\\pyQt5\\gui.ui"
 
     def __init__(self):
         super().__init__()
@@ -17,17 +18,13 @@ class GuiTestController:
 
     def __init__(self, win):
 
-
+        print("INIT")
         # window = MainWindow()
 
         # GuiTestController(window)
 
         win.pushButton.setEnabled(True)
         win.pushButton.clicked.connect(self.test_handler)
-
-
-
-
 
     def test_handler(self):
         print("TEST CLICK")

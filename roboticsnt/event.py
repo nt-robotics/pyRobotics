@@ -1,4 +1,3 @@
-
 class Event(object):
     def __init__(self):
         self.__handlers = set()
@@ -10,7 +9,7 @@ class Event(object):
     def unhandle(self, handler):
         try:
             self.__handlers.remove(handler)
-        except:
+        except Exception:
             raise ValueError("Handler is not handling this event, so cannot unhandle it.")
         return self
 

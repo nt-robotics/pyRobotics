@@ -13,6 +13,7 @@ roboticsnt/computerVision/__pycache__/
 roboticsnt/computerVision/opencv/__pycache__/
 roboticsnt/serial/__pycache__/
 
+roboticsnt/gui/pyQt5/__pycache__/
 # Pycache
  *.pyc
  # Byte-compiled / optimized / DLL files

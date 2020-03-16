@@ -122,7 +122,7 @@ class _BaslerMultipleCamera(Thread):
 
 class _MainWindow(QWidget):
 
-    # __GUI_PATH = "/home/user/Projects/pyCharm/pyRobotics/tests/pypylon/basler_camera_with_qt/gui/test_basler_with_qt_gui.ui"
+    # __GUI_PATH = "/home/user/Projects/pyCharm/pyRobotics/samples/pypylon/basler_camera_with_qt/gui/test_basler_with_qt_gui.ui"
     __GUI_PATH = os.getcwd() + "/gui/test_basler_with_qt_gui.ui"
 
     def __init__(self, close_window_handler):

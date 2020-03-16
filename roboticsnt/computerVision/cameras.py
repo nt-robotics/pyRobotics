@@ -12,8 +12,14 @@ from roboticsnt.event import Event
 
 class BaslerMultipleCamera(Thread):
 
-    MAX_FRAME_WIDTH = 1280
-    MAX_FRAME_HEIGHT = 960
+    MAX_FRAME_WIDTH: int = 1280
+    MAX_FRAME_HEIGHT: int = 960
+
+    # Типы идентификатора камеры который будет отправляться при мене кадра,
+    # для идентификации камеры с которой этот кадр пришел
+    IDENTIFIER_TYPE_USER_ID: int = 0
+    IDENTIFIER_TYPE_SERIAL_NUMBER: int = 1
+    IDENTIFIER_TYPE_CAMERA_CONTEXT: int = 2
 
     @staticmethod
     def get_device_count() -> int:
@@ -36,10 +42,17 @@ class BaslerMultipleCamera(Thread):
             mes = "No Basler devices found"
             raise OutOfRangeException(mes)
 
+        if cameras_count > devices_count:
+            print("Внимание!!! Количество запрашиваемых камер превышает количество подключенных устройств Basler")
+            print("Запрашивается:   ", cameras_count)
+            print("Подключено:      ", devices_count)
+
         if cameras_count is not None and cameras_count > 0:
             self.__cameras_count = min(devices_count, cameras_count)
         else:
             self.__cameras_count = devices_count
+
+        self.__camera_identifier_type_to_send_on_frame_change = self.IDENTIFIER_TYPE_SERIAL_NUMBER
 
         tl_factory = pylon.TlFactory.GetInstance()
         device_list = tl_factory.EnumerateDevices()
@@ -48,7 +61,6 @@ class BaslerMultipleCamera(Thread):
         for i, camera in enumerate(self.__cameras_list):
             camera.Attach(tl_factory.CreateDevice(device_list[i]))
             camera.Open()
-
             camera.Width.SetValue(frame_width)
             camera.Height.SetValue(frame_height)
 
@@ -59,7 +71,12 @@ class BaslerMultipleCamera(Thread):
         self.__converter.OutputPixelFormat = pylon.PixelType_BGR8packed
         self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-    def add_frame_change_handler(self, handler: Callable):
+    def set_identifier_type(self, value: int):
+        self.__camera_identifier_type_to_send_on_frame_change = value
+
+    def add_frame_change_handler(self, handler: Callable, camera_id_type: int = None):
+        if camera_id_type is not None:
+            self.set_identifier_type(camera_id_type)
         self.__change_frame_event.handle(handler)
 
     def add_error_handler(self, handler: Callable):
@@ -92,11 +109,27 @@ class BaslerMultipleCamera(Thread):
                 fps.append(camera.ResultingFrameRate.GetValue())
         return fps
 
+    # Идентификатор установленный пользователем
+    def get_user_id(self, index):
+        camera = self.__cameras_list[index]
+        return camera.DeviceUserID.GetValue()
+
     def get_user_ids(self) -> List[str]:
         names = []
         for camera in self.__cameras_list:
             names.append(camera.DeviceUserID.GetValue())
         return names
+
+    # Серийный номер камеры
+    def get_serial_number(self, index):
+        camera = self.__cameras_list[index]
+        return camera.DeviceSerialNumber.GetValue()
+
+    def get_serial_numbers(self):
+        numbers = []
+        for camera in self.__cameras_list:
+            numbers.append(camera.DeviceSerialNumber.GetValue())
+        return numbers
 
     def run(self) -> None:
 
@@ -105,14 +138,23 @@ class BaslerMultipleCamera(Thread):
         while self.__cameras_list.IsGrabbing():
             try:
                 grab_result = self.__cameras_list.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
-                camera_context = grab_result.GetCameraContext()
+
+                camera_index = grab_result.GetCameraContext()
+                camera_identifier = None
+
+                if self.__camera_identifier_type_to_send_on_frame_change == self.IDENTIFIER_TYPE_CAMERA_CONTEXT:
+                    camera_identifier = camera_index
+                elif self.__camera_identifier_type_to_send_on_frame_change == self.IDENTIFIER_TYPE_SERIAL_NUMBER:
+                    camera_identifier = self.get_serial_number(camera_index)
+                elif self.__camera_identifier_type_to_send_on_frame_change == self.IDENTIFIER_TYPE_USER_ID:
+                    camera_identifier = self.get_user_id(camera_index)
 
                 if grab_result.GrabSucceeded():
                     # Access the image data
                     image = self.__converter.Convert(grab_result)
                     opencv_frame = image.GetArray()
 
-                    self.__change_frame_event.fire(opencv_frame, camera_context)
+                    self.__change_frame_event.fire(opencv_frame, camera_identifier)
 
             except RuntimeException:
                 break
