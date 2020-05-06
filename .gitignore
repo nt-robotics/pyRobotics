@@ -5,15 +5,19 @@
 # Module emulate Jetson and Raspberry PI GPIOs
 Jetson/
 
-roboticsnt/__pycache__/
-roboticsnt/commandProtocol/__pycache__/
-roboticsnt/commandProtocol/arduino/__pycache__/
-roboticsnt/commandProtocol/socket_connection.py
-roboticsnt/computerVision/__pycache__/
-roboticsnt/computerVision/opencv/__pycache__/
-roboticsnt/serial/__pycache__/
 
-roboticsnt/gui/pyQt5/__pycache__/
+pyrobotics/__pycache__/
+pyrobotics/commandProtocol/__pycache__/
+pyrobotics/commandProtocol/arduino/__pycache__/
+pyrobotics/commandProtocol/socket_connection.py
+pyrobotics/computerVision/__pycache__/
+pyrobotics/computerVision/opencv/__pycache__/
+pyrobotics/serial/__pycache__/
+
+pyrobotics/gui/pyQt5/__pycache__/
+
+samples/
+
 # Pycache
  *.pyc
  # Byte-compiled / optimized / DLL files
