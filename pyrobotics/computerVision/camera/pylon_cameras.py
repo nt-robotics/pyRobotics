@@ -49,6 +49,10 @@ class PylonMultipleCamera(object):
         def get_by_name(cls, name):
             return cls[name]
 
+    @classmethod
+    def get_device_count(cls) -> int:
+        return len(pylon.TlFactory.GetInstance().EnumerateDevices())
+
     def __init__(self, cameras_count: int = 0, is_trigger: bool = False, trigger_interval: float = 0.0):
         super().__init__()
 
@@ -74,18 +78,22 @@ class PylonMultipleCamera(object):
         self.set_trigger_mode(is_trigger)
 
     def open(self, cameras_count: int = 0):
-        tlFactory = pylon.TlFactory.GetInstance()
-        devices_list = tlFactory.EnumerateDevices()
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
         devices_count = len(devices_list)
 
         if devices_count == 0:
-            raise ConnectionError("No cameras connected")
+            print("[ERROR] No cameras connected")
+            return
+            # raise ConnectionError("No cameras connected")
 
         if cameras_count == 0:
             cameras_count = devices_count
 
         if devices_count < cameras_count:
-            raise ConnectionError("Too few cameras connected. Need " + str(cameras_count))
+            print("[ERROR] Too few cameras connected. Need " + str(cameras_count))
+            return
+            # raise ConnectionError("Too few cameras connected. Need " + str(cameras_count))
 
         self.__cameras_count = cameras_count
 
@@ -101,7 +109,7 @@ class PylonMultipleCamera(object):
             camera.RegisterImageEventHandler(grab_handler, pylon.RegistrationMode_Append, pylon.Cleanup_Delete)
             camera.RegisterConfiguration(configuration_handler, pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
 
-            camera.Attach(tlFactory.CreateDevice(devices_list[cam_index]))
+            camera.Attach(tl_factory.CreateDevice(devices_list[cam_index]))
             camera.Open()
 
             # Get camera parameter vars example
@@ -126,8 +134,6 @@ class PylonMultipleCamera(object):
             # camera.PixelFormat.SetValue(self.PixelFormat.BayerGR8.value)
             # camera.PixelFormat.SetValue(self.PixelFormat.BayerGR12.value)  # Not supported for dart cameras
 
-            # Trigger mode
-            camera.TriggerMode.SetValue('Off')
             # Exposure
             # camera.ExposureAuto.SetValue('Off')
             # camera.ExposureAuto.SetValue('Once')
@@ -141,6 +147,9 @@ class PylonMultipleCamera(object):
             # camera.GainAuto.SetValue('Off')
             # Immediate Trigger mode
             # camera.BslImmediateTriggerMode.SetValue('On')
+
+            # Trigger mode
+            camera.TriggerMode.SetValue('Off')
 
             print("***************** Init camera ******************")
             print("Camera # " + str(cam_index), " ", camera.DeviceUserID.GetValue())
@@ -166,11 +175,13 @@ class PylonMultipleCamera(object):
 
     def stop(self) -> None:
         self._stop_trigger()
-        self.__cameras_list.StopGrabbing()
+        if self.__cameras_list is not None:
+            self.__cameras_list.StopGrabbing()
 
     def close(self) -> None:
         self._stop_trigger()
-        self.__cameras_list.Close()
+        if self.__cameras_list is not None:
+            self.__cameras_list.Close()
 
     def is_grabbing(self) -> bool:
         return self.__cameras_list.IsGrabbing()
@@ -346,7 +357,7 @@ class PylonMultipleCamera(object):
 
     def _stop_trigger(self):
         if self.__trigger is not None:
-            self.__trigger.stop()
+            self.__trigger.stop_camera()
             self.__trigger = None
 
 
@@ -361,8 +372,7 @@ class _CameraGrabThread(Thread):
             try:
                 self.__cameras_list.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
             except SystemError as e:
-                print(e)
-            # self.__cameras_list.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+                print("[Grab thread error]", e)
 
 
 class _SoftwareTrigger(Thread):

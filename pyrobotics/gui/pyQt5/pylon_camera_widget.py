@@ -17,7 +17,7 @@ class PylonCameraWidget(QWidget):
 
         self.__camera = camera
 
-        self.camera_name_label.setText(self.__camera.get_user_id() + " (" + str(self.__camera.get_serial_number()) + ")")
+        self.camera_name_label.setText("ID: " + self.__camera.get_user_id() + " (S/N:" + str(self.__camera.get_serial_number()) + ")")
 
         # Grab strategy
         self.grab_strategy_combobox.addItems(self.__camera.GrabStrategy.get_names())

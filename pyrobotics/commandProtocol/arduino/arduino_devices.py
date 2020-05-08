@@ -69,7 +69,7 @@ class EncoderSpeedometer(object):
 
     def stop(self):
         if self.__check_angle_thread is not None:
-            self.__check_angle_thread.stop()
+            self.__check_angle_thread.stop_camera()
         if self.is_connected():
             self.__encoder_connection.close()
         self.__check_angle_thread = None

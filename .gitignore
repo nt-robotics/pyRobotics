@@ -1,20 +1,23 @@
-# my pycashe
 
 .idea/
 
 # Module emulate Jetson and Raspberry PI GPIOs
 Jetson/
 
-
+# my pycashe
 pyrobotics/__pycache__/
 pyrobotics/commandProtocol/__pycache__/
 pyrobotics/commandProtocol/arduino/__pycache__/
-pyrobotics/commandProtocol/socket_connection.py
+pyrobotics/commandProtocol/socket/__pycache__/
+
 pyrobotics/computerVision/__pycache__/
-pyrobotics/computerVision/opencv/__pycache__/
+pyrobotics/computerVision/camera/__pycache__/
+pyrobotics/computerVision/neural_netvorks/__pycache__/
+
 pyrobotics/serial/__pycache__/
 
 pyrobotics/gui/pyQt5/__pycache__/
+
 
 samples/
 

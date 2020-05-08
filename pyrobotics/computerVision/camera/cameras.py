@@ -216,7 +216,7 @@ class Camera(object):
 
     def stop(self) -> None:
         if self.is_started():
-            self.__camera_thread.stop()
+            self.__camera_thread.stop_camera()
         self.__camera_thread = None
 
     def is_started(self) -> bool:
