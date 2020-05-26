@@ -4,7 +4,7 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget
 from PyQt5.uic import loadUi
 
-from pyrobotics.computerVision.camera.pylon_cameras import PylonMultipleCamera
+from pyrobotics.video.cameras.pylon_cameras import PylonMultipleCamera
 
 
 class PylonCameraWidget(QWidget):
