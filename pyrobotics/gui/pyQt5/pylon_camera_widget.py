@@ -21,8 +21,8 @@ class PylonCameraWidget(QWidget):
 
         # Grab strategy
         self.grab_strategy_combobox.addItems(self.__camera.GrabStrategy.get_names())
-        grab_strategy_value = self.__camera.get_gain_auto()
-        index = self.grab_strategy_combobox.findText(grab_strategy_value, QtCore.Qt.MatchFixedString)
+        garb_strategy_name = PylonMultipleCamera.GrabStrategy(self.__camera.get_grab_strategy()).name
+        index = self.grab_strategy_combobox.findText(garb_strategy_name, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.grab_strategy_combobox.setCurrentIndex(index)
         self.grab_strategy_combobox.currentIndexChanged['QString'].connect(self.__on_grab_strategy_change)

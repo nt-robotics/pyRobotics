@@ -3,14 +3,13 @@ class Event(object):
         self.__handlers = set()
 
     def handle(self, handler):
-        self.__handlers.add(handler)
+        if not self.__handlers.__contains__(handler):
+            self.__handlers.add(handler)
         return self
 
     def unhandle(self, handler):
-        try:
+        if self.__handlers.__contains__(handler):
             self.__handlers.remove(handler)
-        except Exception:
-            raise ValueError("Handler is not handling this event, so cannot unhandle it.")
         return self
 
     def fire(self, *args, **kargs):

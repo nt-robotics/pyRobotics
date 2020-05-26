@@ -1,7 +1,7 @@
 import time
 from threading import Thread
 
-from pyrobotics.utils import millis
+from pyrobotics.utils.conversion_utils import millis
 from pyrobotics.commandProtocol.arduino.arduino_controllers import ArduinoEncoderController
 from pyrobotics.event import Event
 

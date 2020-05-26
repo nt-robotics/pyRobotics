@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from enum import Enum
 from threading import Thread
@@ -22,8 +21,8 @@ class PylonMultipleCamera(object):
     EXPOSURE_MAX = 1_000_000
 
     class GrabStrategy(Enum):
-        LATEST_IMAGE_ONLY = pylon.GrabStrategy_LatestImageOnly
         ONE_BY_ONE = pylon.GrabStrategy_OneByOne
+        LATEST_IMAGE_ONLY = pylon.GrabStrategy_LatestImageOnly
         LATEST_IMAGES = pylon.GrabStrategy_LatestImages
         # UPCOMING_IMAGE = pylon.GrabStrategy_UpcomingImage # for GigE only
 
@@ -61,11 +60,11 @@ class PylonMultipleCamera(object):
         self.__trigger = None
         self.__is_trigger_mode = False
         self.__trigger_interval = trigger_interval
-        self.__cameras_count = None
+        self.__cameras_count = 0
         self.__grab_strategy = pylon.GrabStrategy_LatestImageOnly
 
         self.__converter = pylon.ImageFormatConverter()
-        self.__converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
         self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
         self.__frame_change_event = Event()
@@ -83,7 +82,7 @@ class PylonMultipleCamera(object):
         devices_count = len(devices_list)
 
         if devices_count == 0:
-            print("[ERROR] No cameras connected")
+            print("[PYLON CAMERA] Error. No cameras connected")
             return
             # raise ConnectionError("No cameras connected")
 
@@ -91,7 +90,7 @@ class PylonMultipleCamera(object):
             cameras_count = devices_count
 
         if devices_count < cameras_count:
-            print("[ERROR] Too few cameras connected. Need " + str(cameras_count))
+            print("[PYLON CAMERA] Error. Too few cameras connected. Need " + str(cameras_count))
             return
             # raise ConnectionError("Too few cameras connected. Need " + str(cameras_count))
 
@@ -151,21 +150,24 @@ class PylonMultipleCamera(object):
             # Trigger mode
             camera.TriggerMode.SetValue('Off')
 
-            print("***************** Init camera ******************")
-            print("Camera # " + str(cam_index), " ", camera.DeviceUserID.GetValue())
-            print(" ( Model: ", camera.GetDeviceInfo().GetModelName(), " | Serial: ",
-                  camera.DeviceSerialNumber.GetValue(), ")")
-            print("USB speed: ", camera.BslUSBSpeedMode.GetValue())
-            print("------------------------------------------------")
+            print()
+            print("[PYLON CAMERA] ***********************  Init cameras ************************")
+            print("Camera:" + str(cam_index), "(User ID:", camera.DeviceUserID.GetValue(), "| Model: ", camera.GetDeviceInfo().GetModelName(), "| Serial: ", camera.DeviceSerialNumber.GetValue(), ")")
+            print("USB speed:", camera.BslUSBSpeedMode.GetValue())
+            print("-----------------------------------------------------------------------------")
 
     # Image converter
-    def convert(self, grab_result):
+    def convert(self, grab_result, output_pixel_format=None):
+        if output_pixel_format is not None:
+            self.__converter.OutputPixelFormat = output_pixel_format
         return self.__converter.Convert(grab_result).GetArray()
 
     # Control
     def start(self):
         if not self.__cameras_list.IsGrabbing():
-            print("Start grabbing with strategy ", self.__grab_strategy)
+            print("[PYLON CAMERA] Start grabbing video from", self.__cameras_count, "camera(s)")
+            # print("[PYLON CAMERA] Grab strategy: ", self.__grab_strategy)
+            print("[PYLON CAMERA] Grab strategy: ", PylonMultipleCamera.GrabStrategy(self.__grab_strategy).name)
             self.__cameras_list.StartGrabbing(self.__grab_strategy)
 
             self.set_trigger_mode(self.__is_trigger_mode)
@@ -289,8 +291,8 @@ class PylonMultipleCamera(object):
     def get_pixel_format(self, camera_index: int = 0) -> str:
         return self.__cameras_list[camera_index].PixelFormat.GetValue()
 
-    def set_pixel_format(self, value: PixelFormat, camera_indices: Tuple[int] = ()) -> None:
-        [camera.PixelFormat.SetValue(value) for camera in self.__get_cameras_by_indices(camera_indices)]
+    def set_pixel_format(self, pixel_format: PixelFormat, camera_indices: Tuple[int] = ()) -> None:
+        [camera.PixelFormat.SetValue(pixel_format.value) for camera in self.__get_cameras_by_indices(camera_indices)]
 
     # Gamma
     def get_gamma(self, camera_index: int = 0) -> float:
@@ -372,7 +374,7 @@ class _CameraGrabThread(Thread):
             try:
                 self.__cameras_list.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
             except SystemError as e:
-                print("[Grab thread error]", e)
+                print("[PYLON CAMERA] Grab thread error.", e)
 
 
 class _SoftwareTrigger(Thread):
@@ -395,7 +397,7 @@ class _SoftwareTrigger(Thread):
                 #     camera.TriggerMode.SetValue('Off')
                 camera.TriggerMode.SetValue('Off')
             except AccessException:
-                print("camera.TriggerMode AccessException")
+                print("[PYLON CAMERA] camera.TriggerMode AccessException")
 
         self.__is_started = False
 
@@ -415,7 +417,7 @@ class _SoftwareTrigger(Thread):
                 try:
                     camera.TriggerSoftware.Execute()
                 except Exception:
-                    print("_SoftwareTrigger error")
+                    print("[PYLON CAMERA] _SoftwareTrigger error")
             if self.__trigger_interval > 0.0:
                 sleep(self.__trigger_interval/1000)
 
@@ -427,24 +429,24 @@ class _GrabEventHandler(pylon.ImageEventHandler):
 
         self.__frame_change_event = frame_change_event
 
-    def OnImagesSkipped(self, camera, countOfSkippedImages):
+    def OnImagesSkipped(self, camera, count_of_skipped_images):
         pass
-        # print("Camera ID: ", camera.DeviceUserID.GetValue(), countOfSkippedImages, "images have been skipped.")
+        # print("Camera ID: ", camera.DeviceUserID.GetValue(), count_of_skipped_images, "images have been skipped.")
 
-    def OnImageGrabbed(self, camera, grabResult):
-        # print("Camera #", grabResult.GetCameraContext(), camera.DeviceUserID.GetValue(), "(", camera.GetDeviceInfo().GetModelName(), ")")
+    def OnImageGrabbed(self, camera, grab_result):
+        # print("Camera #", grab_result.GetCameraContext(), camera.DeviceUserID.GetValue(), "(", camera.GetDeviceInfo().GetModelName(), ")")
         # print("Serial number: ", camera.DeviceSerialNumber.GetValue())
         # print("FPS: ", camera.ResultingFrameRate.GetValue())
         # print("---------------------------------------------------------------")
-        # print(grabResult.GetArray().shape)
-        # print(grabResult.GetArray()[0][0])
+        # print(grab_result.GetArray().shape)
+        # print(grab_result.GetArray()[0][0])
         # serial = camera.DeviceSerialNumber.GetValue()
 
-        if grabResult.GrabSucceeded():
+        if grab_result.GrabSucceeded():
             time = datetime.now()
-            self.__frame_change_event.fire(grabResult, camera.DeviceSerialNumber.GetValue(), time)
+            self.__frame_change_event.fire(grab_result, camera.DeviceSerialNumber.GetValue(), time)
         else:
-            print("Grab Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
+            print("[PYLON CAMERA] Grab Error: ", grab_result.ErrorCode, grab_result.ErrorDescription)
 
 
 class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
@@ -455,54 +457,53 @@ class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
         self.__grab_stopped_event = grab_stopped_event
 
     def OnAttach(self, camera):
-        print("OnAttach event")
+        pass
+        # print("OnAttach event")
 
     def OnAttached(self, camera):
-        print("OnAttached")
-        # print("OnAttached event for device ", camera.DeviceUserID.GetValue())
+        pass
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "attached")
+        # print("[PYLON CAMERA] Camera", camera.DeviceUserID.GetValue(), "attached")
 
     def OnOpen(self, camera):
-        print("OnOpen")
-        # print("OnOpen event for device ", camera.DeviceUserID.GetValue())
+        pass
 
     def OnOpened(self, camera):
-        print("OnOpened", camera.DeviceUserID.GetValue())
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "opened")
 
     def OnGrabStart(self, camera):
-        print("OnGrabStart event for device ", camera.DeviceUserID.GetValue())
+        pass
 
     def OnGrabStarted(self, camera):
-        print("OnGrabStarted event for device ", camera.DeviceUserID.GetValue(), camera.DeviceSerialNumber.GetValue())
         self.__grab_started_event.fire(camera.DeviceSerialNumber.GetValue())
 
     def OnGrabStop(self, camera):
-        print("OnGrabStop event for device ", camera.DeviceUserID.GetValue())
+        pass
 
     def OnGrabStopped(self, camera):
-        print("OnGrabStopped event for device ", camera.DeviceUserID.GetValue(), camera.DeviceSerialNumber.GetValue())
         self.__grab_stopped_event.fire(camera.DeviceSerialNumber.GetValue())
 
     def OnClose(self, camera):
-        print("OnClose event for device ", camera.DeviceUserID.GetValue())
+        pass
 
     def OnClosed(self, camera):
-        print("OnClosed event for device ", camera)
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "closed")
 
     def OnDestroy(self, camera):
-        print("OnDestroy event for device ", camera.DeviceUserID.GetValue())
+        pass
 
     def OnDestroyed(self, camera):
-        print("OnDestroyed event")
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "destroyed")
 
     def OnDetach(self, camera):
-        print("OnDetach event for device ", camera.DeviceUserID.GetValue())
+        pass
 
     def OnDetached(self, camera):
-        print("OnDetached event for device ", camera.DeviceUserID.GetValue())
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "detached")
 
-    def OnGrabError(self, camera, errorMessage):
-        print("OnGrabError event for device ", camera.DeviceUserID.GetValue())
-        print("Error Message: ", errorMessage)
+    def OnGrabError(self, camera, error_message):
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "grab error")
+        print("Error message: ", error_message)
 
     def OnCameraDeviceRemoved(self, camera):
-        print("OnCameraDeviceRemoved event for device ", camera.DeviceUserID.GetValue())
+        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "device removed")

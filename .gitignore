@@ -9,6 +9,7 @@ pyrobotics/__pycache__/
 pyrobotics/commandProtocol/__pycache__/
 pyrobotics/commandProtocol/arduino/__pycache__/
 pyrobotics/commandProtocol/socket/__pycache__/
+pyrobotics/video/__pycache__/
 
 pyrobotics/computerVision/__pycache__/
 pyrobotics/computerVision/camera/__pycache__/

@@ -1,13 +1,8 @@
-import time
 
 
 # Делае число четным
 def make_even(value):
     return (value // 2) * 2
-
-
-def millis():
-    return int(time.time() * 1000)
 
 
 # m/sec to km/h
@@ -40,16 +35,4 @@ def kilometers_per_hour_to_turns_per_minute(value, one_turn_distance):
     return value / 60 / (one_turn_distance / 1000)
 
 
-# Class for calculate code time
-class Profiler(object):
-
-    def __init__(self, name):
-        self.__name = name
-        self.__start_time = None
-
-    def __enter__(self):
-        self.__start_time = millis()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print(self.__name, ": ", millis() - self.__start_time)
 
