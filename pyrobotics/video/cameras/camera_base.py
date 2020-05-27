@@ -52,9 +52,7 @@ class Camera(object):
     def is_open(self) -> bool:
         pass
 
-    # ###########################
     # Parameters
-    # ###########################
 
     def get_id(self) -> int:
         pass

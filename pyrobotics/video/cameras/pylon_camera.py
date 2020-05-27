@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Tuple
 
 from pypylon import pylon
 
@@ -8,6 +9,7 @@ from pyrobotics.video.cameras.camera_base import Camera
 
 
 class PylonCamera(Camera):
+
     MIN_FRAME_SIZE = 16
     GAIN_MAX = 18.027804
     GAMMA_MIN = 0.25
@@ -51,7 +53,9 @@ class PylonCamera(Camera):
     def __init__(self, auto_open: bool = True):
 
         self.__pylon_camera = pylon.InstantCamera()
-        self.__grab_strategy = pylon.GrabStrategy_LatestImageOnly
+
+        self.__grab_strategy = None
+        self.set_grab_strategy(PylonCamera.GrabStrategy.LATEST_IMAGES)
 
         self.__converter = pylon.ImageFormatConverter()
         self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
@@ -72,12 +76,13 @@ class PylonCamera(Camera):
         self.__pylon_camera.Attach(device)
         self.__pylon_camera.Open()
 
-    #     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.__pylon_camera.PixelFormat.SetValue("RGB8")
     #     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     def start(self) -> None:
-        self.__pylon_camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        print("[PYLON CAMERA] Grab strategy: ", PylonCamera.GrabStrategy(self.__grab_strategy).name)
+        self.__pylon_camera.StartGrabbing(self.__grab_strategy)
         super().start()
 
     def is_grabbing(self) -> bool:
@@ -102,6 +107,12 @@ class PylonCamera(Camera):
         self.__pylon_camera.Close()
         self.remove_all_handlers()
 
+    # Image converter
+    def convert(self, grab_result, output_pixel_format=None):
+        if output_pixel_format is not None:
+            self.__converter.OutputPixelFormat = output_pixel_format
+        return self.__converter.Convert(grab_result).GetArray()
+
     # ###########################
     # Parameters
     # ###########################
@@ -109,6 +120,7 @@ class PylonCamera(Camera):
     # _______________________________________________
     # Общие
     # _______________________________________________
+
     # ID
     def get_id(self) -> int:
         return self.get_serial_number()
@@ -118,18 +130,143 @@ class PylonCamera(Camera):
         return "Model: " + self.get_model_name() + " Serial: " + str(self.get_serial_number()) + " User ID: " + self.get_user_id()
 
     # FPS
-    def get_fps(self, camera_index: int = 0) -> float:
-        return self.__pylon_camera[camera_index].ResultingFrameRate.GetValue()
+    def get_fps(self) -> float:
+        return self.__pylon_camera.ResultingFrameRate.GetValue()
     # _______________________________________________
 
+    # User ID
     def get_user_id(self) -> str:
         return self.__pylon_camera.DeviceUserID.GetValue()
 
+    def set_user_id(self, user_id: str) -> None:
+        self.__pylon_camera.DeviceUserID.SetValue(user_id)
+
+    # Model name
     def get_model_name(self) -> str:
         return self.__pylon_camera.GetDeviceInfo().GetModelName()
 
+    # Serial number
     def get_serial_number(self) -> int:
         return self.__pylon_camera.DeviceSerialNumber.GetValue()
+
+    # Pixel format
+    def get_pixel_format(self) -> str:
+        return self.__pylon_camera.PixelFormat.GetValue()
+
+    def set_pixel_format(self, pixel_format: PixelFormat) -> None:
+        self.__pylon_camera.PixelFormat.SetValue(pixel_format.value)
+
+    # Grab strategy
+    def set_grab_strategy(self, strategy: GrabStrategy) -> None:
+        self.__grab_strategy = strategy.value
+
+    def get_grab_strategy(self) -> int:
+        return self.__grab_strategy
+
+    # Frame size
+    def get_width(self) -> int:
+        return self.__pylon_camera.Width.GetValue()
+
+    def get_height(self) -> int:
+        return self.__pylon_camera.Height.GetValue()
+
+    def get_max_width(self) -> int:
+        return self.__pylon_camera.WidthMax.GetValue()
+
+    def get_max_height(self) -> int:
+        return self.__pylon_camera.HeightMax.GetValue()
+
+    def set_width(self, value: int) -> None:
+        self.__pylon_camera.Width.SetValue(value)
+
+    def set_height(self, value: int) -> None:
+        self.__pylon_camera.Height.SetValue(value)
+
+    # Frame offsets
+    def get_offset_x(self) -> int:
+        return self.__pylon_camera.OffsetX.GetValue()
+
+    def get_offset_y(self) -> int:
+        return self.__pylon_camera.OffsetY.GetValue()
+
+    def set_offset_x(self, value: int) -> None:
+        self.__pylon_camera.OffsetX.SetValue(value)
+
+    def set_offset_y(self, value: int) -> None:
+        self.__pylon_camera.OffsetY.SetValue(value)
+
+    # Exposure time
+    def get_exposure_auto(self) -> str:
+        return self.__pylon_camera.ExposureAuto.GetValue()
+
+    def get_exposure_auto_variants(self) -> Tuple[str]:
+        return self.__pylon_camera.ExposureAuto.Symbolics
+
+    def get_exposure_time(self) -> float:
+        return self.__pylon_camera.ExposureTime.GetValue()
+
+    def get_exposure_auto_lower_limit(self) -> float:
+        return self.__pylon_camera.AutoExposureTimeLowerLimit.GetValue()
+
+    def get_exposure_auto_upper_limit(self) -> float:
+        return self.__pylon_camera.AutoExposureTimeUpperLimit.GetValue()
+
+    def set_exposure_auto(self, value: str) -> None:
+        self.__pylon_camera.ExposureAuto.SetValue(value)
+
+    def set_exposure_time(self, value: float) -> None:
+        self.__pylon_camera.ExposureTime.SetValue(value)
+
+    def set_exposure_auto_lower_limit(self, value: float) -> None:
+        self.__pylon_camera.AutoExposureTimeLowerLimit.SetValue(value)
+
+    def set_exposure_auto_upper_limit(self, value: float) -> None:
+        self.__pylon_camera.AutoExposureTimeUpperLimit.SetValue(value)
+
+    # Gamma
+    def get_gamma(self) -> float:
+        return self.__pylon_camera.Gamma.GetValue()
+
+    def set_gamma(self, value: str) -> None:
+        self.__pylon_camera.Gamma.SetValue(value)
+
+    # Gain
+    def get_gain(self) -> float:
+        return self.__pylon_camera.Gain.GetValue()
+
+    def get_gain_auto_variants(self) -> Tuple[str]:
+        return self.__pylon_camera.GainAuto.Symbolics
+
+    def get_gain_auto(self) -> str:
+        return self.__pylon_camera.GainAuto.GetValue()
+
+    def get_gain_auto_lower_limit(self) -> float:
+        return self.__pylon_camera.AutoGainLowerLimit.GetValue()
+
+    def get_gain_auto_upper_limit(self) -> float:
+        return self.__pylon_camera.AutoGainUpperLimit.GetValue()
+
+    def set_gain(self, value: float) -> None:
+        self.__pylon_camera.Gain.SetValue(value)
+
+    def set_gain_auto(self, value: str) -> None:
+        self.__pylon_camera.GainAuto.SetValue(value)
+
+    def set_gain_auto_lower_limit(self, value: float) -> None:
+        self.__pylon_camera.AutoGainLowerLimit.SetValue(value)
+
+    def set_gain_auto_upper_limit(self, value: float) -> None:
+        self.__pylon_camera.AutoGainUpperLimit.SetValue(value)
+
+    # Balance white
+    def get_balance_white_auto_variants(self) -> Tuple[str]:
+        return self.__pylon_camera.BalanceWhiteAuto.Symbolics
+
+    def get_balance_white_auto(self) -> str:
+        return self.__pylon_camera.BalanceWhiteAuto.GetValue()
+
+    def set_balance_white_auto(self, value: str) -> None:
+        self.__pylon_camera.BalanceWhiteAuto.SetValue(value)
 
 
 class _GrabEventHandler(pylon.ImageEventHandler):
