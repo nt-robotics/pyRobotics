@@ -4,14 +4,17 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget
 from PyQt5.uic import loadUi
 
-from pyrobotics.video.cameras.pylon_multiple_camera import PylonMultipleCamera
+from pyrobotics.utils.time_utils import millis
+from pyrobotics.video.cameras.pylon_camera import PylonCamera
 
 
 class PylonCameraWidget(QWidget):
 
     __GUI_PATH = os.path.join(os.path.dirname(__file__), "ui", "pylon_camera_widget.ui")
 
-    def __init__(self, camera: PylonMultipleCamera):
+    __UPDATE_DELAY = 500  # milliseconds
+
+    def __init__(self, camera: PylonCamera):
         super().__init__()
         loadUi(self.__GUI_PATH, self)
 
@@ -21,7 +24,7 @@ class PylonCameraWidget(QWidget):
 
         # Grab strategy
         self.grab_strategy_combobox.addItems(self.__camera.GrabStrategy.get_names())
-        garb_strategy_name = PylonMultipleCamera.GrabStrategy(self.__camera.get_grab_strategy()).name
+        garb_strategy_name = PylonCamera.GrabStrategy(self.__camera.get_grab_strategy()).name
         index = self.grab_strategy_combobox.findText(garb_strategy_name, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.grab_strategy_combobox.setCurrentIndex(index)
@@ -112,6 +115,9 @@ class PylonCameraWidget(QWidget):
         self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
         self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
 
+        # Update
+        self.__last_update_time = millis()
+
     # ##########
     # GUI events
     # ##########
@@ -122,7 +128,8 @@ class PylonCameraWidget(QWidget):
 
     # Pixel format
     def __on_pixel_format_change(self, value):
-        self.__camera.set_pixel_format(value)
+        pixel_format = self.__camera.PixelFormat.get_by_name(value)
+        self.__camera.set_pixel_format(pixel_format)
 
     # Frame size
     def __frame_width_change(self):
@@ -193,11 +200,15 @@ class PylonCameraWidget(QWidget):
     # #############
 
     def __on_camera_frame_change(self, _grab_result, _camera_serial, _frame_time):
-        self.gain_spinbox.setValue(self.__camera.get_gain())
-        self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
-        self.fps_label.setText("{:.2f}".format(self.__camera.get_fps()))
+        now = millis()
+        if now - self.__last_update_time >= self.__UPDATE_DELAY:
+            self.gain_spinbox.setValue(self.__camera.get_gain())
+            self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
+            self.fps_label.setText("{:.2f}".format(self.__camera.get_fps()))
+            self.__last_update_time = now
 
     def __on_camera_start_grabbing(self, _camera_serial):
+        self.__last_update_time = millis()
         self.grab_strategy_combobox.setEnabled(False)
         self.frame_width_spinbox.setEnabled(False)
         self.frame_height_spinbox.setEnabled(False)

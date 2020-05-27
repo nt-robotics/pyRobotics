@@ -2,12 +2,18 @@ from threading import Thread
 
 from pyrobotics.event import Event
 
+import numpy as np
+
 
 class Camera(object):
 
     @classmethod
     def get_device_count(cls) -> int:
         pass
+
+    @classmethod
+    def bgr2rgb(cls, frame: np.array) -> np.array:
+        return frame[..., ::-1].copy()
 
     def __init__(self, auto_open: bool = True):
         device_count = self.get_device_count()

@@ -55,7 +55,7 @@ class PylonCamera(Camera):
         self.__pylon_camera = pylon.InstantCamera()
 
         self.__grab_strategy = None
-        self.set_grab_strategy(PylonCamera.GrabStrategy.LATEST_IMAGES)
+        self.set_grab_strategy(PylonCamera.GrabStrategy.LATEST_IMAGE_ONLY)
 
         self.__converter = pylon.ImageFormatConverter()
         self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
@@ -75,10 +75,6 @@ class PylonCamera(Camera):
         device = pylon.TlFactory.GetInstance().CreateFirstDevice()
         self.__pylon_camera.Attach(device)
         self.__pylon_camera.Open()
-
-        #     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.__pylon_camera.PixelFormat.SetValue("RGB8")
-    #     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     def start(self) -> None:
         print("[PYLON CAMERA] Grab strategy: ", PylonCamera.GrabStrategy(self.__grab_strategy).name)

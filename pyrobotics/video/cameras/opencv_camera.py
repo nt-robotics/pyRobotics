@@ -1,6 +1,5 @@
 from enum import Enum
 
-import numpy as np
 import cv2
 
 from pyrobotics.video.cameras.camera_base import Camera
@@ -29,10 +28,6 @@ class OpenCVCamera(Camera):
                 temp_camera.release()
                 continue
             return i
-
-    @classmethod
-    def bgr2rgb(cls, frame: np.array) -> np.array:
-        return frame[..., ::-1].copy()
 
     def __init__(self, camera_index: int = -1, pixel_format: PixelFormat = PixelFormat.BGR):
 
