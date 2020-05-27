@@ -5,7 +5,17 @@ from pyrobotics.event import Event
 
 class Camera(object):
 
+    @classmethod
+    def get_device_count(cls) -> int:
+        pass
+
     def __init__(self, auto_open: bool = True):
+        device_count = self.get_device_count()
+
+        if device_count == 0:
+            self._dispatch_error("No cameras connected")
+
+        auto_open = auto_open and (device_count > 0)
 
         self.__grab_thread = None
 
@@ -24,7 +34,6 @@ class Camera(object):
         pass
 
     def start(self) -> None:
-        self._started_event.fire()
         self.__grab_thread = _GrabThread(self._loop)
         self.__grab_thread.start()
 
@@ -32,12 +41,28 @@ class Camera(object):
         pass
 
     def close(self) -> None:
-        pass
+        self.stop()
 
     def _loop(self) -> None:
         pass
 
     def is_grabbing(self) -> bool:
+        pass
+
+    def is_open(self) -> bool:
+        pass
+
+    # ###########################
+    # Parameters
+    # ###########################
+
+    def get_id(self) -> int:
+        pass
+
+    def get_name(self) -> str:
+        pass
+
+    def get_fps(self) -> float:
         pass
 
     # Events
@@ -76,6 +101,22 @@ class Camera(object):
 
     def remove_error_handler(self, handler: callable) -> None:
         self._error_event.unhandle(handler)
+
+    def remove_all_handlers(self):
+        self._error_event.clear_handlers()
+        self._closed_event.clear_handlers()
+        self._stopped_event.clear_handlers()
+        self._started_event.clear_handlers()
+        self._frame_change_event.clear_handlers()
+
+    def _dispatch_error(self, message: str):
+        message = "[CAMERA] " + self.__class__.__name__ + " Error. " + message
+        print(message)
+        # raise Exception(message)
+        # raise ConnectionError(message)
+
+    def __str__(self):
+        return self.get_name()
 
 
 class _GrabThread(Thread):
