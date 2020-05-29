@@ -208,7 +208,7 @@ class PylonCameraWidget(QWidget):
             self.__last_update_time = now
 
     def __on_camera_start_grabbing(self, _camera_serial):
-        self.__last_update_time = millis()
+        # self.__last_update_time = millis()
         self.grab_strategy_combobox.setEnabled(False)
         self.frame_width_spinbox.setEnabled(False)
         self.frame_height_spinbox.setEnabled(False)

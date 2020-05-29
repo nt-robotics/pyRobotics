@@ -1,4 +1,6 @@
+from enum import Enum
 from threading import Thread
+from typing import List
 
 from pyrobotics.event import Event
 
@@ -6,6 +8,23 @@ import numpy as np
 
 
 class Camera(object):
+
+    class Type(Enum):
+        PYLON = "Basler"
+        OPENCV = "OpenCV"
+
+        @classmethod
+        def get_names(cls):
+            return [cam_type.name for cam_type in cls]
+
+        @classmethod
+        def get_by_name(cls, name):
+            return cls[name]
+
+        @classmethod
+        def get_list(cls):
+            return [cam_type for cam_type in cls]
+
 
     @classmethod
     def get_device_count(cls) -> int:
@@ -15,7 +34,7 @@ class Camera(object):
     def bgr2rgb(cls, frame: np.array) -> np.array:
         return frame[..., ::-1].copy()
 
-    def __init__(self, auto_open: bool = True):
+    def __init__(self, camera_type: Type, auto_open: bool = True):
         device_count = self.get_device_count()
 
         if device_count == 0:
@@ -23,6 +42,7 @@ class Camera(object):
 
         auto_open = auto_open and (device_count > 0)
 
+        self.__type = camera_type
         self.__grab_thread = None
 
         # Events
@@ -59,6 +79,9 @@ class Camera(object):
         pass
 
     # Parameters
+
+    def get_type(self) -> Type:
+        return self.__type
 
     def get_id(self) -> int:
         pass

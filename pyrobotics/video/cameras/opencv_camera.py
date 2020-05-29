@@ -29,7 +29,7 @@ class OpenCVCamera(Camera):
                 continue
             return i
 
-    def __init__(self, camera_index: int = -1, pixel_format: PixelFormat = PixelFormat.BGR):
+    def __init__(self, camera_index: int = -1, auto_open: bool = True, pixel_format: PixelFormat = PixelFormat.BGR):
 
         self.__camera_index = camera_index
         self.__video_capture = None
@@ -37,7 +37,7 @@ class OpenCVCamera(Camera):
 
         self.__pixel_format = pixel_format
 
-        super().__init__()
+        super().__init__(Camera.Type.OPENCV, auto_open=auto_open)
 
     # Control
     def open(self) -> None:

@@ -61,7 +61,7 @@ class PylonCamera(Camera):
         self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
         self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-        super().__init__(auto_open=auto_open)
+        super().__init__(Camera.Type.PYLON, auto_open=auto_open)
 
     # Control
     def open(self) -> None:
