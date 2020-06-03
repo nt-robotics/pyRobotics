@@ -61,19 +61,19 @@ class PylonCamera(Camera):
         self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
         self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
+        device = pylon.TlFactory.GetInstance().CreateFirstDevice()
+        self.__pylon_camera.Attach(device)
+
         super().__init__(Camera.Type.PYLON, auto_open=auto_open)
 
-    # Control
-    def open(self) -> None:
-
         grab_handler = _GrabEventHandler(frame_change_event=self._frame_change_event)
-        configuration_handler = _ConfigurationEventHandler(camera=self, grab_started_event=self._started_event, grab_stopped_event=self._stopped_event)
+        configuration_handler = _ConfigurationEventHandler(camera=self, grab_started_event=self._started_event, grab_stopped_event=self._stopped_event, camera_opened_event=self._opened_event)
 
         self.__pylon_camera.RegisterImageEventHandler(grab_handler, pylon.RegistrationMode_Append, pylon.Cleanup_Delete)
         self.__pylon_camera.RegisterConfiguration(configuration_handler, pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
 
-        device = pylon.TlFactory.GetInstance().CreateFirstDevice()
-        self.__pylon_camera.Attach(device)
+    # Control
+    def open(self) -> None:
         self.__pylon_camera.Open()
 
     def start(self) -> None:
@@ -294,9 +294,10 @@ class _GrabEventHandler(pylon.ImageEventHandler):
 
 class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
 
-    def __init__(self, camera: PylonCamera, grab_started_event: Event, grab_stopped_event: Event):
+    def __init__(self, camera: PylonCamera, grab_started_event: Event, grab_stopped_event: Event, camera_opened_event: Event):
         super().__init__()
         self.__camera = camera
+        self.__camera_opened_event = camera_opened_event
         self.__grab_started_event = grab_started_event
         self.__grab_stopped_event = grab_stopped_event
 
@@ -312,6 +313,7 @@ class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
 
     def OnOpened(self, camera):
         print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "opened")
+        self.__camera_opened_event.fire(self.__camera)
 
     def OnGrabStart(self, camera):
         pass

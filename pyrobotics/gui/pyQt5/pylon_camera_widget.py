@@ -8,6 +8,21 @@ from pyrobotics.utils.time_utils import millis
 from pyrobotics.video.cameras.pylon_camera import PylonCamera
 
 
+'''
+
+ERROR !!!
+
+При скролле этого виджета приложение вылетает когда на экран появляется один из спинбоксов gain_spinbox, exposure_time_spinbox
+если в __on_frame_change добавить
+
+# self.gain_spinbox.setValue(self.__camera.get_gain())
+# self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
+
+, то же самое если в другом потоке
+
+'''
+
+
 class PylonCameraWidget(QWidget):
 
     __GUI_PATH = os.path.join(os.path.dirname(__file__), "ui", "pylon_camera_widget.ui")
@@ -20,7 +35,24 @@ class PylonCameraWidget(QWidget):
 
         self.__camera = camera
 
-        self.camera_name_label.setText("ID: " + self.__camera.get_user_id() + " (S/N:" + str(self.__camera.get_serial_number()) + ")")
+        if self.__camera.is_open():
+            self.__set_start_params()
+        else:
+            self.setEnabled(False)
+            self.__camera.add_opened_handler(self.__on_camera_opened)
+
+        # Camera events
+        self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
+        self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
+        self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
+
+        # Update
+        self.__last_update_time = millis()
+
+    def __set_start_params(self) -> None:
+        # Camera name
+        self.camera_name_label.setText(
+            "ID: " + self.__camera.get_user_id() + " (S/N:" + str(self.__camera.get_serial_number()) + ")")
 
         # Grab strategy
         self.grab_strategy_combobox.addItems(self.__camera.GrabStrategy.get_names())
@@ -86,7 +118,8 @@ class PylonCameraWidget(QWidget):
         self.exposure_upper_limit_spinbox.setValue(self.__camera.get_exposure_auto_upper_limit())
         self.exposure_upper_limit_spinbox.valueChanged.connect(self.__on_exposure_upper_limit_change)
 
-        self.exposure_lower_limit_spinbox.setRange(self.__camera.EXPOSURE_MIN, self.__camera.get_exposure_auto_upper_limit())
+        self.exposure_lower_limit_spinbox.setRange(self.__camera.EXPOSURE_MIN,
+                                                   self.__camera.get_exposure_auto_upper_limit())
         self.exposure_lower_limit_spinbox.setValue(self.__camera.get_exposure_auto_lower_limit())
         self.exposure_lower_limit_spinbox.valueChanged.connect(self.__on_exposure_lower_limit_change)
 
@@ -109,14 +142,6 @@ class PylonCameraWidget(QWidget):
         if index >= 0:
             self.balance_white_auto_combobox.setCurrentIndex(index)
         self.balance_white_auto_combobox.currentIndexChanged['QString'].connect(self.__on_balance_white_auto_change)
-
-        # Camera events
-        self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
-        self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
-        self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
-
-        # Update
-        self.__last_update_time = millis()
 
     # ##########
     # GUI events
@@ -193,28 +218,31 @@ class PylonCameraWidget(QWidget):
     # Balance white
     def __on_balance_white_auto_change(self, value):
         self.__camera.set_balance_white_auto(value)
-    #     balance_white_auto_combobox
 
     # #############
     # Camera events
     # #############
 
+    def __on_camera_opened(self, _camera: PylonCamera):
+        self.setEnabled(True)
+        self.__set_start_params()
+
     def __on_camera_frame_change(self, _grab_result, _camera_serial, _frame_time):
         now = millis()
         if now - self.__last_update_time >= self.__UPDATE_DELAY:
-            self.gain_spinbox.setValue(self.__camera.get_gain())
-            self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
+            # Если раскомментировать вылетает приложение при скроле этого виджета
+            # self.gain_spinbox.setValue(self.__camera.get_gain())
+            # self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
             self.fps_label.setText("{:.2f}".format(self.__camera.get_fps()))
             self.__last_update_time = now
 
-    def __on_camera_start_grabbing(self, _camera_serial):
-        # self.__last_update_time = millis()
+    def __on_camera_start_grabbing(self, _camera):
         self.grab_strategy_combobox.setEnabled(False)
         self.frame_width_spinbox.setEnabled(False)
         self.frame_height_spinbox.setEnabled(False)
         self.pixel_format_combobox.setEnabled(False)
 
-    def __on_camera_stop_grabbing(self, _camera_serial):
+    def __on_camera_stop_grabbing(self, _camera):
         self.grab_strategy_combobox.setEnabled(True)
         self.frame_width_spinbox.setEnabled(True)
         self.frame_height_spinbox.setEnabled(True)
