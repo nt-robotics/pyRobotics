@@ -77,7 +77,7 @@ class PylonCamera(Camera):
         self.__pylon_camera.Open()
 
     def start(self) -> None:
-        print("[PYLON CAMERA] Grab strategy: ", PylonCamera.GrabStrategy(self.__grab_strategy).name)
+        print("[PYLON CAMERA] Start grabbing. Grab strategy: ", PylonCamera.GrabStrategy(self.__grab_strategy).name)
         self.__pylon_camera.StartGrabbing(self.__grab_strategy)
         super().start()
 

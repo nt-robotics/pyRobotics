@@ -1,10 +1,11 @@
 from enum import Enum
 from threading import Thread
-from typing import List
 
 from pyrobotics.event import Event
 
 import numpy as np
+
+from pyrobotics.utils.time_utils import millis
 
 
 class Camera(object):
@@ -24,7 +25,6 @@ class Camera(object):
         @classmethod
         def get_list(cls):
             return [cam_type for cam_type in cls]
-
 
     @classmethod
     def get_device_count(cls) -> int:
@@ -154,6 +154,39 @@ class _GrabThread(Thread):
 
     def run(self) -> None:
         self.__loop()
+
+
+class FPSMeter(object):
+
+    __CALC_FPS_FRAMES_COUNT = 500
+
+    def __init__(self):
+        self.__fps = 0.0
+
+        self.__frames_count = 0
+        self.__last_calculation_time = millis()
+
+    def get_fps(self) -> float:
+        self.__calc_fps()
+        return self.__fps
+
+    def add_frame(self) -> None:
+        self.__frames_count += 1
+        if self.__frames_count > self.__CALC_FPS_FRAMES_COUNT:
+            self.__calc_fps()
+
+    def __calc_fps(self) -> None:
+        now = millis()
+        delta = now - self.__last_calculation_time
+        if delta > 0:
+            self.__fps = self.__frames_count / (delta / 1000)
+            self.__last_calculation_time = now
+            self.__frames_count = 0
+
+
+
+
+
 
 # from enum import Enum
 # from threading import Thread

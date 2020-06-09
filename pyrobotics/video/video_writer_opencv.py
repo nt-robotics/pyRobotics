@@ -41,7 +41,9 @@ class VideoWriterOpenCV(object):
 
     def release(self) -> None:
         if self.__writer is not None:
+            print("[VIDEO_WRITER] Release writer")
             self.__writer.release()
+            print("[VIDEO_WRITER] Writer released")
         self.__writer = None
 
     def set_fps(self, value: float):
