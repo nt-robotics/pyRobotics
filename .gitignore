@@ -4,24 +4,27 @@
 # Module emulate Jetson and Raspberry PI GPIOs
 Jetson/
 
-# my pycashe
-pyrobotics/__pycache__/
-pyrobotics/commandProtocol/__pycache__/
-pyrobotics/commandProtocol/arduino/__pycache__/
-pyrobotics/commandProtocol/socket/__pycache__/
-pyrobotics/video/__pycache__/
-pyrobotics/video/cameras/__pycache__/
-
-pyrobotics/computerVision/__pycache__/
-pyrobotics/computerVision/camera/__pycache__/
-pyrobotics/computerVision/neural_netvorks/__pycache__/
-
-pyrobotics/serial/__pycache__/
-
-pyrobotics/gui/pyQt5/__pycache__/
-
-
+# Library samples
 samples/
+
+# my pycache
+#pyrobotics/__pycache__/
+#pyrobotics/commandProtocol/__pycache__/
+#pyrobotics/commandProtocol/arduino/__pycache__/
+#pyrobotics/commandProtocol/socket/__pycache__/
+#pyrobotics/video/__pycache__/
+#pyrobotics/video/cameras/__pycache__/
+#
+#pyrobotics/computerVision/__pycache__/
+#pyrobotics/computerVision/neural_netvorks/__pycache__/
+#
+#pyrobotics/serial/__pycache__/
+#
+#pyrobotics/gui/pyQt5/__pycache__/
+
+# Ignore all pycache folders
+**/__pycache__/
+
 
 # Pycache
  *.pyc
