@@ -19,8 +19,8 @@ class OpenCVCamera(Camera):
         def get_by_name(cls, name):
             return cls[name]
 
-    @classmethod
-    def get_device_count(cls) -> int:
+    @staticmethod
+    def get_device_count() -> int:
         max_tested = 100
         for i in range(max_tested):
             temp_camera = cv2.VideoCapture(i)
@@ -42,12 +42,9 @@ class OpenCVCamera(Camera):
     # Control
     def open(self) -> None:
         self.__video_capture = cv2.VideoCapture(self.__camera_index)
-
         if self.__video_capture is None or not self.__video_capture.isOpened():
             error_message = "Camera with index (" + str(self.__camera_index) + ") not found"
-            self._dispatch_error(error_message)
-            self._error_event.fire(error_message)
-            return
+            raise ConnectionError(error_message)
 
     def is_open(self) -> bool:
         return self.__video_capture.isOpened()
@@ -62,7 +59,7 @@ class OpenCVCamera(Camera):
             read, frame = self.__video_capture.read()
             if read:
                 if self.__pixel_format == OpenCVCamera.PixelFormat.RGB:
-                    frame = self.bgr2rgb(frame)
+                    frame = self.swap_rb(frame)
                 self._frame_change_event.fire(frame)
 
         self._stopped_event.fire(self)

@@ -46,11 +46,68 @@ class PylonCamera(Camera):
         def get_by_name(cls, name):
             return cls[name]
 
-    @classmethod
-    def get_device_count(cls) -> int:
+    @staticmethod
+    def get_device_count() -> int:
         return len(pylon.TlFactory.GetInstance().EnumerateDevices())
 
-    def __init__(self, auto_open: bool = True):
+    @staticmethod
+    def get_accessible_device_count() -> int:
+        device_count = 0
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        for device in devices_list:
+            if tl_factory.IsDeviceAccessible(device):
+                device_count += 1
+        return device_count
+
+    @staticmethod
+    def get_first_accessible_camera():
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        for device in devices_list:
+            if tl_factory.IsDeviceAccessible(device):
+                return PylonCamera(device.GetSerialNumber())
+        return None
+
+    @staticmethod
+    def __get_first_accessible_device():
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        for device in devices_list:
+            if tl_factory.IsDeviceAccessible(device):
+                return device
+        return None
+
+    @staticmethod
+    def __is_device_accessible(serial: str) -> bool:
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        for device in devices_list:
+            if device.GetSerialNumber() == serial and tl_factory.IsDeviceAccessible(device):
+                return True
+        return False
+
+    @staticmethod
+    def __is_device_connected(serial: str) -> bool:
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        for device in devices_list:
+            if device.GetSerialNumber() == serial:
+                return True
+        return False
+
+    @staticmethod
+    def __get_device_by_serial_number(serial: str):
+        camera_device = None
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        for device in devices_list:
+            if device.GetSerialNumber() == serial:
+                camera_device = tl_factory.CreateDevice(device)
+                break
+        return camera_device
+
+    def __init__(self, serial_number: str = None, auto_open: bool = True):
 
         self.__pylon_camera = pylon.InstantCamera()
 
@@ -61,8 +118,18 @@ class PylonCamera(Camera):
         self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
         self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-        device = pylon.TlFactory.GetInstance().CreateFirstDevice()
-        self.__pylon_camera.Attach(device)
+        if serial_number is None:
+            if self.get_accessible_device_count() == 0:
+                raise ConnectionError("No cameras available. Connected: " + str(self.get_device_count()) + " Accessible: 0")
+            camera_device = self.__get_first_accessible_device()
+        else:
+            if not self.__is_device_connected(serial_number):
+                raise ConnectionError("Camera with serial number (" + serial_number + ") not connect")
+            if not self.__is_device_accessible(serial_number):
+                raise ConnectionError("Camera with serial number (" + serial_number + ") used in another application")
+            camera_device = self.__get_device_by_serial_number(serial_number)
+
+        self.__pylon_camera.Attach(camera_device)
 
         super().__init__(Camera.Type.PYLON, auto_open=auto_open)
 
@@ -92,7 +159,7 @@ class PylonCamera(Camera):
             try:
                 self.__pylon_camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
             except SystemError:
-                self._dispatch_error("Grab thread error")
+                print("Grab thread error")
 
     def stop(self) -> None:
         if self.is_grabbing():
@@ -126,9 +193,9 @@ class PylonCamera(Camera):
         return "Model: " + self.get_model_name() + " Serial: " + str(self.get_serial_number()) + " User ID: " + self.get_user_id()
 
     # FPS
+    # _______________________________________________
     def get_fps(self) -> float:
         return self.__pylon_camera.ResultingFrameRate.GetValue()
-    # _______________________________________________
 
     # User ID
     def get_user_id(self) -> str:

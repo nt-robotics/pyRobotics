@@ -13,12 +13,16 @@ from pyrobotics.video.cameras.pylon_camera import PylonCamera
 ERROR !!!
 
 При скролле этого виджета приложение вылетает когда на экран появляется один из спинбоксов gain_spinbox, exposure_time_spinbox
-если в __on_frame_change добавить
+если в __on_frame_change добавить:
 
 # self.gain_spinbox.setValue(self.__camera.get_gain())
 # self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
 
 , то же самое если в другом потоке
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Не вылетает в HarvesterVision в Windows
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 '''
 
@@ -82,6 +86,7 @@ class PylonCameraWidget(QWidget):
         self.frame_offset_y_spinbox.valueChanged.connect(self.__frame_offset_y_change)
 
         # Gain
+        # self.gain_auto_combobox.clear()
         self.gain_auto_combobox.addItems(self.__camera.get_gain_auto_variants())
         gain_auto_value = self.__camera.get_gain_auto()
         index = self.gain_auto_combobox.findText(gain_auto_value, QtCore.Qt.MatchFixedString)
@@ -230,9 +235,12 @@ class PylonCameraWidget(QWidget):
     def __on_camera_frame_change(self, _grab_result, _camera_serial, _frame_time):
         now = millis()
         if now - self.__last_update_time >= self.__UPDATE_DELAY:
-            # Если раскомментировать вылетает приложение при скроле этого виджета
-            # self.gain_spinbox.setValue(self.__camera.get_gain())
-            # self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
+            # Если раскомментировать следующие две строчки вылетает приложение при скроле этого виджета
+            # (Не вылетает в HarvesterVision в Windows)
+            # ===================================================================
+            self.gain_spinbox.setValue(self.__camera.get_gain())
+            self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
+            # ===================================================================
             self.fps_label.setText("{:.2f}".format(self.__camera.get_fps()))
             self.__last_update_time = now
 

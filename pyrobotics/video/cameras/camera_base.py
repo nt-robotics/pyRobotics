@@ -26,19 +26,19 @@ class Camera(object):
         def get_list(cls):
             return [cam_type for cam_type in cls]
 
-    @classmethod
-    def get_device_count(cls) -> int:
+    @staticmethod
+    def get_device_count() -> int:
         pass
 
-    @classmethod
-    def bgr2rgb(cls, frame: np.array) -> np.array:
+    @staticmethod
+    def swap_rb(frame: np.array) -> np.array:
         return frame[..., ::-1].copy()
 
     def __init__(self, camera_type: Type, auto_open: bool = True):
         device_count = self.get_device_count()
 
         if device_count == 0:
-            self._dispatch_error("No cameras connected")
+            raise ConnectionError("No cameras connected")
 
         auto_open = auto_open and (device_count > 0)
 
@@ -136,11 +136,10 @@ class Camera(object):
         self._started_event.clear_handlers()
         self._frame_change_event.clear_handlers()
 
-    def _dispatch_error(self, message: str):
-        message = "[CAMERA] " + self.__class__.__name__ + " Error. " + message
-        print(message)
-        # raise Exception(message)
-        # raise ConnectionError(message)
+    # def _dispatch_error(self, message: str):
+    #     message = "[CAMERA] " + self.__class__.__name__ + " Error. " + message
+    #     print(message)
+    #     self._error_event.fire(message)
 
     def __str__(self):
         return self.get_name()
@@ -182,10 +181,6 @@ class FPSMeter(object):
             self.__fps = self.__frames_count / (delta / 1000)
             self.__last_calculation_time = now
             self.__frames_count = 0
-
-
-
-
 
 
 # from enum import Enum
