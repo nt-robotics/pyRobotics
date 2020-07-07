@@ -41,7 +41,7 @@ class PylonCameraWidget(QWidget):
 
         self.update_devices_bt.setIcon(QtGui.QIcon(self.__UPDATE_ICON_PATH))
         self.update_devices_bt.setIconSize(QtCore.QSize(16, 16))
-        self.update_devices_bt.setEnabled(False)
+        self.update_devices_bt.clicked.connect(self.__on_update_devices_list_but_click)
         self.update_devices_auto_checkbox.setEnabled(False)
 
         self.__camera = None
@@ -54,19 +54,11 @@ class PylonCameraWidget(QWidget):
 
         self.__update_devices_list()
 
-        # self.__camera = camera
-        #
         # if self.__camera.is_open():
         #     self.__set_start_params()
         # else:
         #     self.setEnabled(False)
         #     self.__camera.add_opened_handler(self.__on_camera_opened)
-        #
-        # # Camera events
-        # self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
-        # self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
-        # self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
-        #
 
         # Update
         self.__last_update_time = millis()
@@ -74,6 +66,9 @@ class PylonCameraWidget(QWidget):
     # #######################
     # Control camera devices
     # #######################
+
+    def __on_update_devices_list_but_click(self):
+        self.__update_devices_list()
 
     def __set_camera(self, camera_serial):
         if self.__is_camera_in_opened_list(camera_serial):
@@ -102,9 +97,15 @@ class PylonCameraWidget(QWidget):
                 return camera
         return None
 
-    def __on_selected_device_change(self, index):
-        selected_device_data = self.device_list_combobox.itemData(index, QtCore.Qt.UserRole)
-        selected_device_serial = selected_device_data["serial_number"]
+    def __get_selected_device_serial(self):
+        selected_index = self.device_list_combobox.currentIndex()
+        if selected_index > -1:
+            selected_device_data = self.device_list_combobox.itemData(selected_index, QtCore.Qt.UserRole)
+            return selected_device_data["serial_number"]
+        return None
+
+    def __on_selected_device_change(self, _index):
+        selected_device_serial = self.__get_selected_device_serial()
 
         if self.__is_camera_in_opened_list(selected_device_serial):
             self.__set_camera(selected_device_serial)
@@ -113,9 +114,7 @@ class PylonCameraWidget(QWidget):
             self.settings_panel.hide()
 
     def __on_open_device_bt_click(self):
-        selected_index = self.device_list_combobox.currentIndex()
-        selected_device_data = self.device_list_combobox.itemData(selected_index, QtCore.Qt.UserRole)
-        selected_device_serial = selected_device_data["serial_number"]
+        selected_device_serial = self.__get_selected_device_serial()
 
         if self.__is_camera_in_opened_list(selected_device_serial):
             camera = self.__get_opened_camera_by_serial(selected_device_serial)
@@ -127,24 +126,27 @@ class PylonCameraWidget(QWidget):
             self.__set_camera(selected_device_serial)
 
     def __update_devices_list(self):
+        prev_device_serial = self.__get_selected_device_serial()
+        new_selected_index = 0
+
         device_info_list = PylonCamera.get_devices_info()
         model = QtGui.QStandardItemModel(0, 1)
 
-        for device_info in device_info_list:
+        for index, device_info in enumerate(device_info_list):
             device_name = device_info["friendly_name"]
             serial_number = device_info["serial_number"]
             is_accessible = device_info["is_accessible"]
             item = QtGui.QStandardItem(device_name)
-            # item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-            # item.setData(QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
             item.setData(device_info, QtCore.Qt.UserRole)
-
             # Если камера открыта в другом приложении
             if not is_accessible and not self.__is_camera_in_opened_list(serial_number):
                 item.setEnabled(is_accessible)
             model.appendRow(item)
+            if prev_device_serial == serial_number:
+                new_selected_index = index
 
         self.device_list_combobox.setModel(model)
+        self.device_list_combobox.setCurrentIndex(new_selected_index)
 
     def __set_settings(self) -> None:
         # Grab strategy
