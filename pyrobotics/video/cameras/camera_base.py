@@ -83,7 +83,7 @@ class Camera(object):
     def get_type(self) -> Type:
         return self.__type
 
-    def get_id(self) -> int:
+    def get_id(self) -> str:
         pass
 
     def get_name(self) -> str:

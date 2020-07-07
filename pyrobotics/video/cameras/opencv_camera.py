@@ -82,8 +82,8 @@ class OpenCVCamera(Camera):
     # _______________________________________________
 
     # ID
-    def get_id(self) -> int:
-        return self.__camera_index
+    def get_id(self) -> str:
+        return str(self.__camera_index)
 
     # FPS
     def get_fps(self):

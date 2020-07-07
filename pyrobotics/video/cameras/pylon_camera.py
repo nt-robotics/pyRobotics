@@ -47,6 +47,45 @@ class PylonCamera(Camera):
             return cls[name]
 
     @staticmethod
+    def get_devices_info():
+        tl_factory = pylon.TlFactory.GetInstance()
+        devices_list = tl_factory.EnumerateDevices()
+        result_list = []
+        for device in devices_list:
+            # print("GetSerialNumber: ", device.GetSerialNumber())
+            # print("GetUserDefinedName: ", device.GetUserDefinedName())
+            # print("GetModelName: ", device.GetModelName())
+            # print("GetInterfaceID: ", device.GetInterfaceID())
+            # print("GetFriendlyName: ", device.GetFriendlyName())
+            # print("GetFullName: ", device.GetFullName())
+            # print("GetVendorName: ", device.GetVendorName())
+            # print("GetDeviceClass: ", device.GetDeviceClass())
+            # print("GetManufacturerInfo: ", device.GetManufacturerInfo())
+            # print("GetProductId: ", device.GetProductId())
+            # print("GetXMLSource: ", device.GetXMLSource())
+            # print("GetAddress: ", device.GetAddress())
+            # print("GetInterface: ", device.GetInterface())
+            # print("GetInitialBaudRate: ", device.GetInitialBaudRate())
+            # print("GetDeviceVersion: ", device.GetDeviceVersion())
+
+            device_info = dict()
+            device_info["serial_number"] = device.GetSerialNumber()
+            device_info["user_defined_name"] = device.GetUserDefinedName()
+            device_info["model_name"] = device.GetModelName()
+            device_info["friendly_name"] = device.GetFriendlyName()
+            device_info["full_name"] = device.GetFullName()
+            device_info["vendor_name"] = device.GetVendorName()
+            device_info["device_class"] = device.GetDeviceClass()
+            device_info["is_accessible"] = tl_factory.IsDeviceAccessible(device)
+
+            result_list.append(device_info)
+
+        # result_list.append(dict(serial_number="notAccessibleCameraSerial", friendly_name="notAccessibleCameraName", is_accessible=False))
+        # result_list.append(dict(serial_number="Test serial 2", friendly_name="Camera2 NAME TEST", is_accessible=True))
+        # result_list.reverse()
+        return result_list
+
+    @staticmethod
     def get_device_count() -> int:
         return len(pylon.TlFactory.GetInstance().EnumerateDevices())
 
@@ -66,7 +105,7 @@ class PylonCamera(Camera):
         devices_list = tl_factory.EnumerateDevices()
         for device in devices_list:
             if tl_factory.IsDeviceAccessible(device):
-                return PylonCamera(device.GetSerialNumber())
+                return PylonCamera(device.GetSerialNumber(), False)
         return None
 
     @staticmethod
@@ -163,6 +202,7 @@ class PylonCamera(Camera):
 
     def stop(self) -> None:
         if self.is_grabbing():
+            print("[PYLON CAMERA] Stop grabbing")
             self.__pylon_camera.StopGrabbing()
 
     def close(self) -> None:
@@ -185,7 +225,7 @@ class PylonCamera(Camera):
     # _______________________________________________
 
     # ID
-    def get_id(self) -> int:
+    def get_id(self) -> str:
         return self.get_serial_number()
 
     # Name
@@ -193,9 +233,9 @@ class PylonCamera(Camera):
         return "Model: " + self.get_model_name() + " Serial: " + str(self.get_serial_number()) + " User ID: " + self.get_user_id()
 
     # FPS
-    # _______________________________________________
     def get_fps(self) -> float:
         return self.__pylon_camera.ResultingFrameRate.GetValue()
+    # _______________________________________________
 
     # User ID
     def get_user_id(self) -> str:
@@ -209,7 +249,7 @@ class PylonCamera(Camera):
         return self.__pylon_camera.GetDeviceInfo().GetModelName()
 
     # Serial number
-    def get_serial_number(self) -> int:
+    def get_serial_number(self) -> str:
         return self.__pylon_camera.DeviceSerialNumber.GetValue()
 
     # Pixel format
