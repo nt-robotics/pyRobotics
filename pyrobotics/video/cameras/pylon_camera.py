@@ -67,7 +67,6 @@ class PylonCamera(Camera):
             # print("GetInterface: ", device.GetInterface())
             # print("GetInitialBaudRate: ", device.GetInitialBaudRate())
             # print("GetDeviceVersion: ", device.GetDeviceVersion())
-
             device_info = dict()
             device_info["serial_number"] = device.GetSerialNumber()
             device_info["user_defined_name"] = device.GetUserDefinedName()

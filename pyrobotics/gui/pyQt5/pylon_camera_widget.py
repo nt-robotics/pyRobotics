@@ -41,18 +41,14 @@ class PylonCameraWidget(QWidget):
 
         self.update_devices_bt.setIcon(QtGui.QIcon(self.__UPDATE_ICON_PATH))
         self.update_devices_bt.setIconSize(QtCore.QSize(16, 16))
-        self.update_devices_bt.clicked.connect(self.__on_update_devices_list_but_click)
         self.update_devices_auto_checkbox.setEnabled(False)
 
         self.__camera = None
         self.__opened_cameras_list: List[PylonCamera] = []
 
-        self.settings_panel.hide()
-
-        self.open_device_bt.clicked.connect(self.__on_open_device_bt_click)
-        self.device_list_combobox.currentIndexChanged[int].connect(self.__on_selected_device_change)
-
+        self.__create_gui_event_handlers()
         self.__update_devices_list()
+        self.settings_panel.hide()
 
         # if self.__camera.is_open():
         #     self.__set_start_params()
@@ -81,7 +77,7 @@ class PylonCameraWidget(QWidget):
         self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
         self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
 
-        self.__set_settings()
+        self.__set_camera_settings()
         self.settings_panel.show()
         self.open_device_bt.setText("Close")
 
@@ -148,96 +144,151 @@ class PylonCameraWidget(QWidget):
         self.device_list_combobox.setModel(model)
         self.device_list_combobox.setCurrentIndex(new_selected_index)
 
-    def __set_settings(self) -> None:
+    def __create_gui_event_handlers(self):
+        # Devices
+        self.update_devices_bt.clicked.connect(self.__on_update_devices_list_but_click)
+        self.open_device_bt.clicked.connect(self.__on_open_device_bt_click)
+        self.device_list_combobox.currentIndexChanged[int].connect(self.__on_selected_device_change)
         # Grab strategy
+        self.grab_strategy_combobox.currentIndexChanged['QString'].connect(self.__on_grab_strategy_change)
+        # Frame size
+        self.frame_width_spinbox.valueChanged.connect(self.__frame_width_change)
+        self.frame_height_spinbox.valueChanged.connect(self.__frame_height_change)
+        # Offsets
+        self.frame_offset_x_spinbox.valueChanged.connect(self.__frame_offset_x_change)
+        self.frame_offset_y_spinbox.valueChanged.connect(self.__frame_offset_y_change)
+        # Gain
+        self.gain_auto_combobox.currentIndexChanged['QString'].connect(self.__on_gain_auto_change)
+        self.gain_upper_limit_spinbox.valueChanged.connect(self.__on_gain_upper_limit_change)
+        self.gain_lower_limit_spinbox.valueChanged.connect(self.__on_gain_lower_limit_change)
+        self.gain_spinbox.valueChanged.connect(self.__on_gain_change)
+        # Gamma
+        self.gamma_spinbox.valueChanged.connect(self.__on_gamma_spinbox_change)
+        # Exposure time
+        self.exposure_auto_combobox.currentIndexChanged['QString'].connect(self.__on_exposure_auto_change)
+        self.exposure_upper_limit_spinbox.valueChanged.connect(self.__on_exposure_upper_limit_change)
+        self.exposure_lower_limit_spinbox.valueChanged.connect(self.__on_exposure_lower_limit_change)
+        self.exposure_time_spinbox.valueChanged.connect(self.__on_exposure_change)
+        # Pixel format
+        self.pixel_format_combobox.currentIndexChanged['QString'].connect(self.__on_pixel_format_change)
+        # Balance white
+        self.balance_white_auto_combobox.currentIndexChanged['QString'].connect(self.__on_balance_white_auto_change)
+
+    def __set_camera_settings(self) -> None:
+
+        # Block signals
+        self.grab_strategy_combobox.blockSignals(True)
+        self.frame_width_spinbox.blockSignals(True)
+        self.frame_height_spinbox.blockSignals(True)
+        self.frame_offset_x_spinbox.blockSignals(True)
+        self.frame_offset_y_spinbox.blockSignals(True)
+        self.gain_auto_combobox.blockSignals(True)
+        self.gain_upper_limit_spinbox.blockSignals(True)
+        self.gain_lower_limit_spinbox.blockSignals(True)
+        self.gain_spinbox.blockSignals(True)
+        self.gamma_spinbox.blockSignals(True)
+        self.exposure_auto_combobox.blockSignals(True)
+        self.exposure_upper_limit_spinbox.blockSignals(True)
+        self.exposure_lower_limit_spinbox.blockSignals(True)
+        self.exposure_time_spinbox.blockSignals(True)
+        self.pixel_format_combobox.blockSignals(True)
+        self.balance_white_auto_combobox.blockSignals(True)
+
+        # Grab strategy
+        self.grab_strategy_combobox.clear()
         self.grab_strategy_combobox.addItems(self.__camera.GrabStrategy.get_names())
         garb_strategy_name = PylonCamera.GrabStrategy(self.__camera.get_grab_strategy()).name
         index = self.grab_strategy_combobox.findText(garb_strategy_name, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.grab_strategy_combobox.setCurrentIndex(index)
-        self.grab_strategy_combobox.currentIndexChanged['QString'].connect(self.__on_grab_strategy_change)
 
         # fps
         self.fps_label.setText("0.00")
 
-        # frame size
+        # Frame size
         self.frame_width_spinbox.setRange(self.__camera.MIN_FRAME_SIZE, self.__camera.get_max_width())
         self.frame_width_spinbox.setValue(self.__camera.get_width())
-        self.frame_width_spinbox.valueChanged.connect(self.__frame_width_change)
         self.frame_height_spinbox.setRange(self.__camera.MIN_FRAME_SIZE, self.__camera.get_max_height())
         self.frame_height_spinbox.setValue(self.__camera.get_height())
-        self.frame_height_spinbox.valueChanged.connect(self.__frame_height_change)
 
         # Offsets
         self.frame_offset_x_spinbox.setRange(0, self.__camera.get_max_width() - self.__camera.get_width())
         self.frame_offset_x_spinbox.setValue(self.__camera.get_offset_x())
-        self.frame_offset_x_spinbox.valueChanged.connect(self.__frame_offset_x_change)
         self.frame_offset_y_spinbox.setRange(0, self.__camera.get_max_height() - self.__camera.get_height())
         self.frame_offset_y_spinbox.setValue(self.__camera.get_offset_y())
-        self.frame_offset_y_spinbox.valueChanged.connect(self.__frame_offset_y_change)
 
         # Gain
-        # self.gain_auto_combobox.clear()
+        self.gain_auto_combobox.clear()
         self.gain_auto_combobox.addItems(self.__camera.get_gain_auto_variants())
         gain_auto_value = self.__camera.get_gain_auto()
         index = self.gain_auto_combobox.findText(gain_auto_value, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.gain_auto_combobox.setCurrentIndex(index)
-        self.gain_auto_combobox.currentIndexChanged['QString'].connect(self.__on_gain_auto_change)
 
         self.gain_upper_limit_spinbox.setRange(0, self.__camera.GAIN_MAX)
         self.gain_upper_limit_spinbox.setValue(self.__camera.get_gain_auto_upper_limit())
-        self.gain_upper_limit_spinbox.valueChanged.connect(self.__on_gain_upper_limit_change)
 
         self.gain_lower_limit_spinbox.setRange(0, self.__camera.get_gain_auto_upper_limit())
         self.gain_lower_limit_spinbox.setValue(self.__camera.get_gain_auto_lower_limit())
-        self.gain_lower_limit_spinbox.valueChanged.connect(self.__on_gain_lower_limit_change)
 
         self.gain_spinbox.setRange(0, self.__camera.GAIN_MAX)
         self.gain_spinbox.setValue(self.__camera.get_gain())
-        self.gain_spinbox.valueChanged.connect(self.__on_gain_change)
 
         # Gamma
         self.gamma_spinbox.setRange(self.__camera.GAMMA_MIN, self.__camera.GAMMA_MAX)
         self.gamma_spinbox.setValue(self.__camera.get_gamma())
-        self.gamma_spinbox.valueChanged.connect(self.__on_gamma_spinbox_change)
 
         # Exposure time
+        self.exposure_auto_combobox.clear()
         self.exposure_auto_combobox.addItems(self.__camera.get_exposure_auto_variants())
         exposure_auto_value = self.__camera.get_exposure_auto()
         index = self.exposure_auto_combobox.findText(exposure_auto_value, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.exposure_auto_combobox.setCurrentIndex(index)
-        self.exposure_auto_combobox.currentIndexChanged['QString'].connect(self.__on_exposure_auto_change)
 
         self.exposure_upper_limit_spinbox.setRange(self.__camera.EXPOSURE_MIN, self.__camera.EXPOSURE_MAX)
         self.exposure_upper_limit_spinbox.setValue(self.__camera.get_exposure_auto_upper_limit())
-        self.exposure_upper_limit_spinbox.valueChanged.connect(self.__on_exposure_upper_limit_change)
 
         self.exposure_lower_limit_spinbox.setRange(self.__camera.EXPOSURE_MIN,
                                                    self.__camera.get_exposure_auto_upper_limit())
         self.exposure_lower_limit_spinbox.setValue(self.__camera.get_exposure_auto_lower_limit())
-        self.exposure_lower_limit_spinbox.valueChanged.connect(self.__on_exposure_lower_limit_change)
 
         self.exposure_time_spinbox.setRange(self.__camera.EXPOSURE_MIN, self.__camera.EXPOSURE_MAX)
         self.exposure_time_spinbox.setValue(self.__camera.get_exposure_time())
-        self.exposure_time_spinbox.valueChanged.connect(self.__on_exposure_change)
 
         # Pixel format
+        self.pixel_format_combobox.clear()
         self.pixel_format_combobox.addItems(self.__camera.PixelFormat.get_names())
         pixel_format_value = self.__camera.get_pixel_format()
         index = self.pixel_format_combobox.findText(pixel_format_value, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.pixel_format_combobox.setCurrentIndex(index)
-        self.pixel_format_combobox.currentIndexChanged['QString'].connect(self.__on_pixel_format_change)
 
         # Balance white
+        self.balance_white_auto_combobox.clear()
         self.balance_white_auto_combobox.addItems(self.__camera.get_balance_white_auto_variants())
         balance_white_value = self.__camera.get_balance_white_auto()
         index = self.balance_white_auto_combobox.findText(balance_white_value, QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.balance_white_auto_combobox.setCurrentIndex(index)
-        self.balance_white_auto_combobox.currentIndexChanged['QString'].connect(self.__on_balance_white_auto_change)
+
+        # UnBlock signals
+        self.grab_strategy_combobox.blockSignals(False)
+        self.frame_width_spinbox.blockSignals(False)
+        self.frame_height_spinbox.blockSignals(False)
+        self.frame_offset_x_spinbox.blockSignals(False)
+        self.frame_offset_y_spinbox.blockSignals(False)
+        self.gain_auto_combobox.blockSignals(False)
+        self.gain_upper_limit_spinbox.blockSignals(False)
+        self.gain_lower_limit_spinbox.blockSignals(False)
+        self.gain_spinbox.blockSignals(False)
+        self.gamma_spinbox.blockSignals(False)
+        self.exposure_auto_combobox.blockSignals(False)
+        self.exposure_upper_limit_spinbox.blockSignals(False)
+        self.exposure_lower_limit_spinbox.blockSignals(False)
+        self.exposure_time_spinbox.blockSignals(False)
+        self.pixel_format_combobox.blockSignals(False)
+        self.balance_white_auto_combobox.blockSignals(False)
 
     # ##########
     # GUI events
