@@ -130,7 +130,7 @@ class PylonCamera(Camera):
 
     def __new__(cls, serial_number: str = None):
         if serial_number is None:
-            return PylonCamera.get_next_camera()
+            return PylonCamera.get_first_accessible_camera()
 
         for camera in PylonCamera.__cameras_list:
             camera_serial = camera.get_serial_number()
