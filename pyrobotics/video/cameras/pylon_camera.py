@@ -24,6 +24,11 @@ class PylonCamera(Camera):
     # Индекс камеры получаемой из метода 'get_next_camera'
     __next_camera_index = 0
 
+    # Image converter
+    __converter = pylon.ImageFormatConverter()
+    __converter.OutputPixelFormat = pylon.PixelType_RGB8packed
+    __converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+
     class GrabStrategy(Enum):
         ONE_BY_ONE = pylon.GrabStrategy_OneByOne
         LATEST_IMAGE_ONLY = pylon.GrabStrategy_LatestImageOnly
@@ -51,6 +56,13 @@ class PylonCamera(Camera):
         @classmethod
         def get_by_name(cls, name):
             return cls[name]
+
+    # Convert image format
+    @classmethod
+    def convert(cls, grab_result, output_pixel_format=None):
+        if output_pixel_format is not None:
+            cls.__converter.OutputPixelFormat = output_pixel_format
+        return cls.__converter.Convert(grab_result).GetArray()
 
     @classmethod
     def get_list(cls) -> []:
@@ -158,10 +170,6 @@ class PylonCamera(Camera):
         camera_device = PylonCamera.__tl_factory.CreateDevice(self.__camera_device_info)
         self.__pylon_camera.Attach(camera_device)
 
-        self.__converter = pylon.ImageFormatConverter()
-        self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
-        self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
-
     # Control
     def open(self) -> None:
         self.__is_opened_here = True
@@ -206,12 +214,6 @@ class PylonCamera(Camera):
         super().close()
         self.__pylon_camera.Close()
         self.remove_all_handlers()
-
-    # Image converter
-    def convert(self, grab_result, output_pixel_format=None):
-        if output_pixel_format is not None:
-            self.__converter.OutputPixelFormat = output_pixel_format
-        return self.__converter.Convert(grab_result).GetArray()
 
     # ###########################
     # Parameters
