@@ -18,6 +18,12 @@ class PylonCamera(Camera):
     EXPOSURE_MIN = 10
     EXPOSURE_MAX = 1_000_000
 
+    __tl_factory = pylon.TlFactory.GetInstance()
+    # Список доступных камер, обновляется методом '__update_list'
+    __cameras_list = []
+    # Индекс камеры получаемой из метода 'get_next_camera'
+    __next_camera_index = 0
+
     class GrabStrategy(Enum):
         ONE_BY_ONE = pylon.GrabStrategy_OneByOne
         LATEST_IMAGE_ONLY = pylon.GrabStrategy_LatestImageOnly
@@ -46,106 +52,91 @@ class PylonCamera(Camera):
         def get_by_name(cls, name):
             return cls[name]
 
-    @staticmethod
-    def get_devices_info():
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        result_list = []
+    @classmethod
+    def get_list(cls) -> []:
+        cls.__update_list()
+        return cls.__cameras_list
+
+    @classmethod
+    def get_device_count(cls) -> int:
+        return len(cls.__tl_factory.EnumerateDevices())
+
+    @classmethod
+    def get_accessible_device_count(cls) -> int:
+        accessible_device_count = 0
+        devices_list = cls.__tl_factory.EnumerateDevices()
         for device in devices_list:
-            # print("GetSerialNumber: ", device.GetSerialNumber())
-            # print("GetUserDefinedName: ", device.GetUserDefinedName())
-            # print("GetModelName: ", device.GetModelName())
-            # print("GetInterfaceID: ", device.GetInterfaceID())
-            # print("GetFriendlyName: ", device.GetFriendlyName())
-            # print("GetFullName: ", device.GetFullName())
-            # print("GetVendorName: ", device.GetVendorName())
-            # print("GetDeviceClass: ", device.GetDeviceClass())
-            # print("GetManufacturerInfo: ", device.GetManufacturerInfo())
-            # print("GetProductId: ", device.GetProductId())
-            # print("GetXMLSource: ", device.GetXMLSource())
-            # print("GetAddress: ", device.GetAddress())
-            # print("GetInterface: ", device.GetInterface())
-            # print("GetInitialBaudRate: ", device.GetInitialBaudRate())
-            # print("GetDeviceVersion: ", device.GetDeviceVersion())
-            device_info = dict()
-            device_info["serial_number"] = device.GetSerialNumber()
-            device_info["user_defined_name"] = device.GetUserDefinedName()
-            device_info["model_name"] = device.GetModelName()
-            device_info["friendly_name"] = device.GetFriendlyName()
-            device_info["full_name"] = device.GetFullName()
-            device_info["vendor_name"] = device.GetVendorName()
-            device_info["device_class"] = device.GetDeviceClass()
-            device_info["is_accessible"] = tl_factory.IsDeviceAccessible(device)
+            if cls.__tl_factory.IsDeviceAccessible(device):
+                accessible_device_count += 1
+        return accessible_device_count
 
-            result_list.append(device_info)
+    @classmethod
+    def get_next_camera(cls):
+        cls.__update_list()
+        cameras_count = len(cls.__cameras_list)
+        if cls.__next_camera_index > cameras_count - 1:
+            raise StopIteration("No more cameras connected. " + str(cameras_count) + " cameras connected.")
+        next_camera = cls.__cameras_list[cls.__next_camera_index]
+        cls.__next_camera_index += 1
+        return next_camera
 
-        # result_list.append(dict(serial_number="notAccessibleCameraSerial", friendly_name="notAccessibleCameraName", is_accessible=False))
-        # result_list.append(dict(serial_number="Test serial 2", friendly_name="Camera2 NAME TEST", is_accessible=True))
-        # result_list.reverse()
-        return result_list
-
-    @staticmethod
-    def get_device_count() -> int:
-        return len(pylon.TlFactory.GetInstance().EnumerateDevices())
-
-    @staticmethod
-    def get_accessible_device_count() -> int:
-        device_count = 0
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        for device in devices_list:
-            if tl_factory.IsDeviceAccessible(device):
-                device_count += 1
-        return device_count
-
-    @staticmethod
-    def get_first_accessible_camera():
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        for device in devices_list:
-            if tl_factory.IsDeviceAccessible(device):
-                return PylonCamera(device.GetSerialNumber(), False)
+    @classmethod
+    def get_first_accessible_camera(cls):
+        if cls.get_accessible_device_count() == 0:
+            raise ConnectionError("No cameras available. Connected: " + str(cls.get_device_count()) + " Accessible: 0")
+        devices_info_list = cls.__tl_factory.EnumerateDevices()
+        for device_info in devices_info_list:
+            if cls.__tl_factory.IsDeviceAccessible(device_info):
+                return PylonCamera(device_info.GetSerialNumber(), False)
         return None
 
-    @staticmethod
-    def __get_first_accessible_device():
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        for device in devices_list:
-            if tl_factory.IsDeviceAccessible(device):
-                return device
+    @classmethod
+    def __update_list(cls):
+        if len(cls.__cameras_list) == cls.get_device_count():
+            return
+        devices_list = cls.__tl_factory.EnumerateDevices()
+        for device_info in devices_list:
+            device_serial = device_info.GetSerialNumber()
+            if not cls.__is_camera_exist(device_serial):
+                PylonCamera(device_serial, False)
+
+    @classmethod
+    def __get_device_info_by_serial_number(cls, serial: str):
+        devices_info_list = cls.__tl_factory.EnumerateDevices()
+        for device_info in devices_info_list:
+            if device_info.GetSerialNumber() == serial:
+                return device_info
         return None
 
-    @staticmethod
-    def __is_device_accessible(serial: str) -> bool:
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        for device in devices_list:
-            if device.GetSerialNumber() == serial and tl_factory.IsDeviceAccessible(device):
+    @classmethod
+    def __is_camera_exist(cls, serial) -> bool:
+        for camera in cls.__cameras_list:
+            camera_serial = camera.get_serial_number()
+            if camera_serial == serial:
                 return True
         return False
 
-    @staticmethod
-    def __is_device_connected(serial: str) -> bool:
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        for device in devices_list:
-            if device.GetSerialNumber() == serial:
-                return True
-        return False
+    def __new__(cls, serial_number: str = None, auto_open: bool = True):
+        if serial_number is None:
+            return PylonCamera.get_next_camera()
 
-    @staticmethod
-    def __get_device_by_serial_number(serial: str):
-        camera_device = None
-        tl_factory = pylon.TlFactory.GetInstance()
-        devices_list = tl_factory.EnumerateDevices()
-        for device in devices_list:
-            if device.GetSerialNumber() == serial:
-                camera_device = tl_factory.CreateDevice(device)
-                break
-        return camera_device
+        for camera in PylonCamera.__cameras_list:
+            camera_serial = camera.get_serial_number()
+            if camera_serial == serial_number:
+                return camera
+        return super(PylonCamera, cls).__new__(cls)
 
     def __init__(self, serial_number: str = None, auto_open: bool = True):
+        if serial_number is None:
+            return
+
+        if PylonCamera.__is_camera_exist(serial_number):
+            return
+        else:
+            PylonCamera.__cameras_list.append(self)
+
+        # Флаг показывающий что камера была открыта именно в этой программе, а не в другом клиенте
+        self.__is_opened_here = False
 
         self.__pylon_camera = pylon.InstantCamera()
 
@@ -156,17 +147,16 @@ class PylonCamera(Camera):
         self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
         self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-        if serial_number is None:
-            if self.get_accessible_device_count() == 0:
-                raise ConnectionError("No cameras available. Connected: " + str(self.get_device_count()) + " Accessible: 0")
-            camera_device = self.__get_first_accessible_device()
-        else:
-            if not self.__is_device_connected(serial_number):
-                raise ConnectionError("Camera with serial number (" + serial_number + ") not connect")
-            if not self.__is_device_accessible(serial_number):
-                raise ConnectionError("Camera with serial number (" + serial_number + ") used in another application")
-            camera_device = self.__get_device_by_serial_number(serial_number)
+        self.__camera_device_info = self.__get_device_info_by_serial_number(serial_number)
+        if self.__camera_device_info is None:
+            raise ConnectionError("Camera with serial number (" + serial_number + ") not connect")
 
+        if not self.is_device_accessible():
+            # raise ConnectionError("Camera with serial number (" + serial_number + ") used in another application")
+            print("[WARNING] Camera (S/N:", serial_number, ") used in another application")
+            return
+
+        camera_device = PylonCamera.__tl_factory.CreateDevice(self.__camera_device_info)
         self.__pylon_camera.Attach(camera_device)
 
         super().__init__(Camera.Type.PYLON, auto_open=auto_open)
@@ -179,6 +169,7 @@ class PylonCamera(Camera):
 
     # Control
     def open(self) -> None:
+        self.__is_opened_here = True
         self.__pylon_camera.Open()
 
     def start(self) -> None:
@@ -191,6 +182,16 @@ class PylonCamera(Camera):
 
     def is_open(self) -> bool:
         return self.__pylon_camera.IsOpen()
+
+    def is_attach(self) -> bool:
+        return self.__pylon_camera.IsPylonDeviceAttached()
+
+    # Не работает, всегда False
+    # def is_device_removed(self) -> bool:
+    #     return self.__pylon_camera.IsCameraDeviceRemoved()
+
+    def is_open_in_another_application(self):
+        return not self.is_device_accessible() and not self.__is_opened_here
 
     def _loop(self) -> None:
         while self.__pylon_camera.IsGrabbing():
@@ -220,7 +221,7 @@ class PylonCamera(Camera):
     # ###########################
 
     # _______________________________________________
-    # Общие
+    # Общие для всех типов камер(Pylon, OpenCV)
     # _______________________________________________
 
     # ID
@@ -229,27 +230,66 @@ class PylonCamera(Camera):
 
     # Name
     def get_name(self) -> str:
-        return "Model: " + self.get_model_name() + " Serial: " + str(self.get_serial_number()) + " User ID: " + self.get_user_id()
+        return "<Pylon camera>. Model: " + self.get_model_name() + ", Serial: " + str(self.get_serial_number()) + ", User ID: " + self.get_user_id()
 
     # FPS
     def get_fps(self) -> float:
         return self.__pylon_camera.ResultingFrameRate.GetValue()
     # _______________________________________________
 
+    # _______________________________________________
+    # Параметры устройства
+    # _______________________________________________
+
+    # print("GetSerialNumber: ", device.GetSerialNumber())
+    # print("GetUserDefinedName: ", device.GetUserDefinedName())
+    # print("GetModelName: ", device.GetModelName())
+    # print("GetInterfaceID: ", device.GetInterfaceID())
+    # print("GetFriendlyName: ", device.GetFriendlyName())
+    # print("GetFullName: ", device.GetFullName())
+    # print("GetVendorName: ", device.GetVendorName())
+    # print("GetDeviceClass: ", device.GetDeviceClass())
+    # print("GetManufacturerInfo: ", device.GetManufacturerInfo())
+    # print("GetProductId: ", device.GetProductId())
+    # print("GetXMLSource: ", device.GetXMLSource())
+    # print("GetAddress: ", device.GetAddress())
+    # print("GetInterface: ", device.GetInterface())
+    # print("GetInitialBaudRate: ", device.GetInitialBaudRate())
+    # print("GetDeviceVersion: ", device.GetDeviceVersion())
+
+    # device_info["serial_number"] = device.GetSerialNumber()
+    # device_info["user_defined_name"] = device.GetUserDefinedName()
+    # device_info["model_name"] = device.GetModelName()
+    # device_info["friendly_name"] = device.GetFriendlyName()
+    # device_info["full_name"] = device.GetFullName()
+    # device_info["vendor_name"] = device.GetVendorName()
+    # device_info["device_class"] = device.GetDeviceClass()
+    # device_info["is_accessible"] = tl_factory.IsDeviceAccessible(device)
+
+    # Is device accessible
+    def is_device_accessible(self) -> bool:
+        return PylonCamera.__tl_factory.IsDeviceAccessible(self.__camera_device_info)
+
     # User ID
     def get_user_id(self) -> str:
-        return self.__pylon_camera.DeviceUserID.GetValue()
+        return self.__camera_device_info.GetUserDefinedName()
 
     def set_user_id(self, user_id: str) -> None:
-        self.__pylon_camera.DeviceUserID.SetValue(user_id)
+        self.__camera_device_info.SetUserDefinedName(user_id)
 
     # Model name
     def get_model_name(self) -> str:
-        return self.__pylon_camera.GetDeviceInfo().GetModelName()
+        return self.__camera_device_info.GetModelName()
 
     # Serial number
     def get_serial_number(self) -> str:
-        return self.__pylon_camera.DeviceSerialNumber.GetValue()
+        return self.__camera_device_info.GetSerialNumber()
+
+    # Friendly name
+    def get_friendly_name(self) -> str:
+        return self.__camera_device_info.GetFriendlyName()
+
+    # _______________________________________________
 
     # Pixel format
     def get_pixel_format(self) -> str:

@@ -136,7 +136,7 @@ class PylonCameraWidget(QWidget):
             item.setData(device_info, QtCore.Qt.UserRole)
             # Если камера открыта в другом приложении
             if not is_accessible and not self.__is_camera_in_opened_list(serial_number):
-                item.setEnabled(is_accessible)
+                item.setEnabled(False)
             model.appendRow(item)
             if prev_device_serial == serial_number:
                 new_selected_index = index
