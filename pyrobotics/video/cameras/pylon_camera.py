@@ -87,7 +87,7 @@ class PylonCamera(Camera):
         devices_info_list = cls.__tl_factory.EnumerateDevices()
         for device_info in devices_info_list:
             if cls.__tl_factory.IsDeviceAccessible(device_info):
-                return PylonCamera(device_info.GetSerialNumber(), False)
+                return PylonCamera(device_info.GetSerialNumber())
         return None
 
     @classmethod
@@ -98,7 +98,7 @@ class PylonCamera(Camera):
         for device_info in devices_list:
             device_serial = device_info.GetSerialNumber()
             if not cls.__is_camera_exist(device_serial):
-                PylonCamera(device_serial, False)
+                PylonCamera(device_serial)
 
     @classmethod
     def __get_device_info_by_serial_number(cls, serial: str):
@@ -116,7 +116,7 @@ class PylonCamera(Camera):
                 return True
         return False
 
-    def __new__(cls, serial_number: str = None, auto_open: bool = True):
+    def __new__(cls, serial_number: str = None):
         if serial_number is None:
             return PylonCamera.get_next_camera()
 
@@ -126,30 +126,29 @@ class PylonCamera(Camera):
                 return camera
         return super(PylonCamera, cls).__new__(cls)
 
-    def __init__(self, serial_number: str = None, auto_open: bool = True):
-        if serial_number is None:
+    def __init__(self, serial_number: str = None):
+        if serial_number is None or PylonCamera.__is_camera_exist(serial_number):
             return
+        self.__camera_device_info = self.__get_device_info_by_serial_number(serial_number)
+        if self.__camera_device_info is None:
+            raise ConnectionError("Camera with serial number (" + serial_number + ") not connect")
 
-        if PylonCamera.__is_camera_exist(serial_number):
-            return
-        else:
-            PylonCamera.__cameras_list.append(self)
+        super().__init__(Camera.Type.PYLON)
+
+        PylonCamera.__cameras_list.append(self)
 
         # Флаг показывающий что камера была открыта именно в этой программе, а не в другом клиенте
         self.__is_opened_here = False
-
         self.__pylon_camera = pylon.InstantCamera()
 
         self.__grab_strategy = None
         self.set_grab_strategy(PylonCamera.GrabStrategy.LATEST_IMAGE_ONLY)
 
-        self.__converter = pylon.ImageFormatConverter()
-        self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
-        self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        grab_handler = _GrabEventHandler(frame_change_event=self._frame_change_event)
+        configuration_handler = _ConfigurationEventHandler(camera=self, grab_started_event=self._started_event, grab_stopped_event=self._stopped_event, camera_opened_event=self._opened_event)
 
-        self.__camera_device_info = self.__get_device_info_by_serial_number(serial_number)
-        if self.__camera_device_info is None:
-            raise ConnectionError("Camera with serial number (" + serial_number + ") not connect")
+        self.__pylon_camera.RegisterImageEventHandler(grab_handler, pylon.RegistrationMode_Append, pylon.Cleanup_Delete)
+        self.__pylon_camera.RegisterConfiguration(configuration_handler, pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
 
         if not self.is_device_accessible():
             # raise ConnectionError("Camera with serial number (" + serial_number + ") used in another application")
@@ -159,13 +158,9 @@ class PylonCamera(Camera):
         camera_device = PylonCamera.__tl_factory.CreateDevice(self.__camera_device_info)
         self.__pylon_camera.Attach(camera_device)
 
-        super().__init__(Camera.Type.PYLON, auto_open=auto_open)
-
-        grab_handler = _GrabEventHandler(frame_change_event=self._frame_change_event)
-        configuration_handler = _ConfigurationEventHandler(camera=self, grab_started_event=self._started_event, grab_stopped_event=self._stopped_event, camera_opened_event=self._opened_event)
-
-        self.__pylon_camera.RegisterImageEventHandler(grab_handler, pylon.RegistrationMode_Append, pylon.Cleanup_Delete)
-        self.__pylon_camera.RegisterConfiguration(configuration_handler, pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
+        self.__converter = pylon.ImageFormatConverter()
+        self.__converter.OutputPixelFormat = pylon.PixelType_RGB8packed
+        self.__converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
     # Control
     def open(self) -> None:
@@ -173,6 +168,8 @@ class PylonCamera(Camera):
         self.__pylon_camera.Open()
 
     def start(self) -> None:
+        if not self.is_open():
+            self.open()
         print("[PYLON CAMERA] Start grabbing. Grab strategy: ", PylonCamera.GrabStrategy(self.__grab_strategy).name)
         self.__pylon_camera.StartGrabbing(self.__grab_strategy)
         super().start()

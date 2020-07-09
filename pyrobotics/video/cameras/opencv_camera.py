@@ -29,7 +29,7 @@ class OpenCVCamera(Camera):
                 continue
             return i
 
-    def __init__(self, camera_index: int = -1, auto_open: bool = True, pixel_format: PixelFormat = PixelFormat.BGR):
+    def __init__(self, camera_index: int = -1, pixel_format: PixelFormat = PixelFormat.BGR):
 
         self.__camera_index = camera_index
         self.__video_capture = None
@@ -37,7 +37,7 @@ class OpenCVCamera(Camera):
 
         self.__pixel_format = pixel_format
 
-        super().__init__(Camera.Type.OPENCV, auto_open=auto_open)
+        super().__init__(Camera.Type.OPENCV)
 
     # Control
     def open(self) -> None:
@@ -45,6 +45,11 @@ class OpenCVCamera(Camera):
         if self.__video_capture is None or not self.__video_capture.isOpened():
             error_message = "Camera with index (" + str(self.__camera_index) + ") not found"
             raise ConnectionError(error_message)
+
+    def start(self) -> None:
+        if not self.is_open():
+            self.open()
+        super().start()
 
     def is_open(self) -> bool:
         return self.__video_capture.isOpened()

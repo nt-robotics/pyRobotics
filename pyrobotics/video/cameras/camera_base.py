@@ -34,13 +34,11 @@ class Camera(object):
     def swap_rb(frame: np.array) -> np.array:
         return frame[..., ::-1].copy()
 
-    def __init__(self, camera_type: Type, auto_open: bool = True):
+    def __init__(self, camera_type: Type):
         device_count = self.get_device_count()
 
         if device_count == 0:
             raise ConnectionError("No cameras connected")
-
-        auto_open = auto_open and (device_count > 0)
 
         self.__type = camera_type
         self.__grab_thread = None
@@ -52,9 +50,6 @@ class Camera(object):
         self._opened_event = Event()
         self._closed_event = Event()
         self._error_event = Event()
-
-        if auto_open:
-            self.open()
 
     def open(self) -> None:
         pass
