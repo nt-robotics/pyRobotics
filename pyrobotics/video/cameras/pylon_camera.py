@@ -21,8 +21,6 @@ class PylonCamera(Camera):
     __tl_factory = pylon.TlFactory.GetInstance()
     # Список доступных камер, обновляется методом '__update_list'
     __cameras_list = []
-    # Индекс камеры получаемой из метода 'get_next_camera'
-    __next_camera_index = 0
 
     # Image converter
     __converter = pylon.ImageFormatConverter()
@@ -81,16 +79,6 @@ class PylonCamera(Camera):
             if cls.__tl_factory.IsDeviceAccessible(device):
                 accessible_device_count += 1
         return accessible_device_count
-
-    @classmethod
-    def get_next_camera(cls):
-        cls.__update_list()
-        cameras_count = len(cls.__cameras_list)
-        if cls.__next_camera_index > cameras_count - 1:
-            raise StopIteration("No more cameras connected. " + str(cameras_count) + " cameras connected.")
-        next_camera = cls.__cameras_list[cls.__next_camera_index]
-        cls.__next_camera_index += 1
-        return next_camera
 
     @classmethod
     def get_first_accessible_camera(cls):
@@ -214,6 +202,7 @@ class PylonCamera(Camera):
         super().close()
         self.__pylon_camera.Close()
         self.remove_all_handlers()
+        PylonCamera.__cameras_list.remove(self)
 
     # ###########################
     # Parameters
@@ -448,16 +437,15 @@ class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
 
     def OnAttach(self, camera):
         pass
-        # print("OnAttach event")
 
     def OnAttached(self, camera):
-        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "attached")
+        print("[PYLON CAMERA] Camera attached", self.__camera)
 
     def OnOpen(self, camera):
         pass
 
     def OnOpened(self, camera):
-        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "opened")
+        print("[PYLON CAMERA] Camera opened", self.__camera)
         self.__camera_opened_event.fire(self.__camera)
 
     def OnGrabStart(self, camera):
@@ -470,11 +458,10 @@ class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
         pass
 
     def OnGrabStopped(self, camera):
-        # self.__grab_stopped_event.fire(camera.DeviceSerialNumber.GetValue())
         self.__grab_stopped_event.fire(self.__camera)
 
     def OnClose(self, camera):
-        print("[PYLON CAMERA] Camera", camera.GetDeviceInfo().GetModelName(), "(", camera.DeviceUserID.GetValue(), ")", "close")
+        print("[PYLON CAMERA] Camera close", self.__camera)
 
     def OnClosed(self, camera):
         print("[PYLON CAMERA] Camera closed")
