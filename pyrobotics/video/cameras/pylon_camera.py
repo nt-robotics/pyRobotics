@@ -3,12 +3,15 @@ from enum import Enum
 from typing import Tuple
 
 from pypylon import pylon
+from pypylon.pylon import DeviceInfo
 
 from pyrobotics.event import Event
 from pyrobotics.video.cameras.camera_base import Camera
 
 
 class PylonCamera(Camera):
+
+    """Класс для работы с камерами Basler"""
 
     MIN_FRAME_SIZE = 16
     GAIN_MAX = 18.027804
@@ -90,8 +93,18 @@ class PylonCamera(Camera):
                 return PylonCamera(device_info.GetSerialNumber())
         return None
 
+    @staticmethod
+    def get_camera_by_serial(serial):
+        return PylonCamera(serial)
+
     @classmethod
-    def __update_list(cls):
+    def __update_list(cls) -> None:
+        # Удаление отключенных камер
+        for camera in cls.__cameras_list:
+            if camera.is_device_removed():
+                camera.remove_all_handlers()
+                cls.__cameras_list.remove(camera)
+
         if len(cls.__cameras_list) == cls.get_device_count():
             return
         devices_list = cls.__tl_factory.EnumerateDevices()
@@ -101,15 +114,16 @@ class PylonCamera(Camera):
                 PylonCamera(device_serial)
 
     @classmethod
-    def __get_device_info_by_serial_number(cls, serial: str):
+    def __get_device_info_by_serial_number(cls, serial: str) -> DeviceInfo or None:
         devices_info_list = cls.__tl_factory.EnumerateDevices()
         for device_info in devices_info_list:
             if device_info.GetSerialNumber() == serial:
+                print(type(device_info))
                 return device_info
         return None
 
     @classmethod
-    def __is_camera_exist(cls, serial) -> bool:
+    def __is_camera_exist(cls, serial: str) -> bool:
         for camera in cls.__cameras_list:
             camera_serial = camera.get_serial_number()
             if camera_serial == serial:
@@ -145,7 +159,7 @@ class PylonCamera(Camera):
         self.set_grab_strategy(PylonCamera.GrabStrategy.LATEST_IMAGE_ONLY)
 
         grab_handler = _GrabEventHandler(frame_change_event=self._frame_change_event)
-        configuration_handler = _ConfigurationEventHandler(camera=self, grab_started_event=self._started_event, grab_stopped_event=self._stopped_event, camera_opened_event=self._opened_event)
+        configuration_handler = _ConfigurationEventHandler(camera=self, grab_started_event=self._started_event, grab_stopped_event=self._stopped_event, camera_opened_event=self._opened_event, camera_closed_event=self._closed_event)
 
         self.__pylon_camera.RegisterImageEventHandler(grab_handler, pylon.RegistrationMode_Append, pylon.Cleanup_Delete)
         self.__pylon_camera.RegisterConfiguration(configuration_handler, pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
@@ -179,19 +193,13 @@ class PylonCamera(Camera):
     def is_attach(self) -> bool:
         return self.__pylon_camera.IsPylonDeviceAttached()
 
-    # Не работает, всегда False
-    # def is_device_removed(self) -> bool:
-    #     return self.__pylon_camera.IsCameraDeviceRemoved()
+    # Возвращает True когда камеры была открыта, а потом отключена физически
+    def is_device_removed(self) -> bool:
+        return self.__pylon_camera.IsCameraDeviceRemoved()
 
-    def is_open_in_another_application(self):
+    # Возвращает True когда камеры не была открыта, но все равно ее устройство недоступно
+    def is_open_in_another_application(self) -> bool:
         return not self.is_device_accessible() and not self.__is_opened_here
-
-    def _loop(self) -> None:
-        while self.__pylon_camera.IsGrabbing():
-            try:
-                self.__pylon_camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
-            except SystemError:
-                print("Grab thread error")
 
     def stop(self) -> None:
         if self.is_grabbing():
@@ -200,16 +208,23 @@ class PylonCamera(Camera):
 
     def close(self) -> None:
         super().close()
+        self.__is_opened_here = False
         self.__pylon_camera.Close()
-        self.remove_all_handlers()
-        PylonCamera.__cameras_list.remove(self)
+        # self.remove_all_handlers()
+
+    def _loop(self) -> None:
+        while self.__pylon_camera.IsGrabbing():
+            try:
+                self.__pylon_camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+            except SystemError:
+                print("Grab thread error")
 
     # ###########################
     # Parameters
     # ###########################
 
     # _______________________________________________
-    # Общие для всех типов камер(Pylon, OpenCV)
+    # Общие для всех типов камер (Pylon, OpenCV)
     # _______________________________________________
 
     # ID
@@ -226,7 +241,7 @@ class PylonCamera(Camera):
     # _______________________________________________
 
     # _______________________________________________
-    # Параметры устройства
+    # Параметры устройства. Доступны даже когда камера не была открыта (open())
     # _______________________________________________
 
     # print("GetSerialNumber: ", device.GetSerialNumber())
@@ -428,12 +443,13 @@ class _GrabEventHandler(pylon.ImageEventHandler):
 
 class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
 
-    def __init__(self, camera: PylonCamera, grab_started_event: Event, grab_stopped_event: Event, camera_opened_event: Event):
+    def __init__(self, camera: PylonCamera, grab_started_event: Event, grab_stopped_event: Event, camera_opened_event: Event, camera_closed_event: Event):
         super().__init__()
         self.__camera = camera
         self.__camera_opened_event = camera_opened_event
         self.__grab_started_event = grab_started_event
         self.__grab_stopped_event = grab_stopped_event
+        self.__camera_closed_event = camera_closed_event
 
     def OnAttach(self, camera):
         pass
@@ -465,6 +481,7 @@ class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
 
     def OnClosed(self, camera):
         print("[PYLON CAMERA] Camera closed")
+        self.__camera_closed_event.fire(self.__camera)
 
     def OnDestroy(self, camera):
         pass

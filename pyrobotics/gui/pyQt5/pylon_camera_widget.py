@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QWidget
@@ -30,6 +29,8 @@ ERROR !!!
 
 class PylonCameraWidget(QWidget):
 
+    """PylonCameraWidget pyQt виджет для управления камерами Basler"""
+
     __GUI_PATH = os.path.join(os.path.dirname(__file__), "ui", "pylon_camera_widget.ui")
     __UPDATE_ICON_PATH = os.path.join(os.path.dirname(__file__), "ui", "updateIcon.png")
 
@@ -43,18 +44,12 @@ class PylonCameraWidget(QWidget):
         self.update_devices_bt.setIconSize(QtCore.QSize(16, 16))
         self.update_devices_auto_checkbox.setEnabled(False)
 
+        self.settings_panel.hide()
+
         self.__camera = None
-        self.__opened_cameras_list: List[PylonCamera] = []
 
         self.__create_gui_event_handlers()
         self.__update_devices_list()
-        self.settings_panel.hide()
-
-        # if self.__camera.is_open():
-        #     self.__set_start_params()
-        # else:
-        #     self.setEnabled(False)
-        #     self.__camera.add_opened_handler(self.__on_camera_opened)
 
         # Update
         self.__last_update_time = millis()
@@ -63,120 +58,91 @@ class PylonCameraWidget(QWidget):
     # Control camera devices
     # #######################
 
-    def __on_update_devices_list_but_click(self):
-        self.__update_devices_list()
+    def __update_devices_list(self) -> None:
+        model = QtGui.QStandardItemModel(0, 1)
+        for index, camera in enumerate(PylonCamera.get_list()):
+            camera: PylonCamera = camera
+            device_name = camera.get_friendly_name()
+            serial_number = camera.get_serial_number()
+            item = QtGui.QStandardItem(device_name)
+            item.setData(serial_number, QtCore.Qt.UserRole)
 
-    def __set_camera(self, camera_serial):
-        if self.__is_camera_in_opened_list(camera_serial):
-            self.__camera = self.__get_opened_camera_by_serial(camera_serial)
+            print(camera.get_friendly_name())
+            print("is_open_in_another_application:", camera.is_open_in_another_application())
+            print("is_open:", camera.is_open())
+            print("is_device_accessible:", camera.is_device_accessible())
+            print("is_device_removed:", camera.is_device_removed())
+            print("---------------------------")
+
+            # Если камера открыта в другом приложении или отключена после открытия,
+            # то не добавляем ее в список
+            if not camera.is_open_in_another_application():
+                model.appendRow(item)
+                # item.setEnabled(False)
+
+        self.device_list_combobox.blockSignals(True)
+        self.device_list_combobox.setModel(model)
+        if self.__camera is not None:
+            index = self.device_list_combobox.findData(self.__camera.get_serial_number())
+            if index > -1:
+                self.device_list_combobox.setCurrentIndex(index)
+            else:
+                self.__update_camera()
         else:
-            self.__camera = PylonCamera(camera_serial)
-            self.__opened_cameras_list.append(self.__camera)
+            self.__update_camera()
+        self.device_list_combobox.blockSignals(False)
 
+    def __update_camera(self) -> None:
+        # Если подключена хотябя одна камера
+        if self.device_list_combobox.count() > 0:
+            selected_serial = self.device_list_combobox.currentData()
+            self.open_device_bt.setEnabled(True)
+            self.device_list_combobox.setEnabled(True)
+            self.__set_camera(PylonCamera.get_camera_by_serial(selected_serial))
+        else:
+            self.open_device_bt.setText("Open")
+            self.open_device_bt.setEnabled(False)
+            self.device_list_combobox.setEnabled(False)
+            self.settings_panel.hide()
+            self.__unset_camera()
+
+    def __unset_camera(self) -> None:
+        if self.__camera is not None:
+            self.__camera.remove_grab_started_handler(self.__on_camera_start_grabbing)
+            self.__camera.remove_grab_stopped_handler(self.__on_camera_stop_grabbing)
+            self.__camera.remove_frame_change_handler(self.__on_camera_frame_change)
+            self.__camera.remove_opened_handler(self.__on_camera_opened)
+            self.__camera.remove_closed_handler(self.__on_camera_closed)
+            self.__camera = None
+
+    def __set_camera(self, camera: PylonCamera) -> None:
+        if self.__camera is not None and self.__camera.get_serial_number() == camera.get_serial_number():
+            return
+
+        self.__unset_camera()
+
+        self.__camera = camera
         self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
         self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
         self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
+        self.__camera.add_opened_handler(self.__on_camera_opened)
+        self.__camera.add_closed_handler(self.__on_camera_closed)
+        if self.__camera.is_open():
+            self.__show_settings()
+        else:
+            self.__hide_settings()
 
+    def __show_settings(self) -> None:
         self.__set_camera_settings()
         self.settings_panel.show()
         self.open_device_bt.setText("Close")
 
-    def __is_camera_in_opened_list(self, serial_number) -> bool:
-        for camera in self.__opened_cameras_list:
-            if camera.get_serial_number() == serial_number:
-                return True
-        return False
-
-    def __get_opened_camera_by_serial(self, serial_number):
-        for camera in self.__opened_cameras_list:
-            if camera.get_serial_number() == serial_number:
-                return camera
-        return None
-
-    def __get_selected_device_serial(self):
-        selected_index = self.device_list_combobox.currentIndex()
-        if selected_index > -1:
-            selected_device_data = self.device_list_combobox.itemData(selected_index, QtCore.Qt.UserRole)
-            return selected_device_data["serial_number"]
-        return None
-
-    def __on_selected_device_change(self, _index):
-        selected_device_serial = self.__get_selected_device_serial()
-
-        if self.__is_camera_in_opened_list(selected_device_serial):
-            self.__set_camera(selected_device_serial)
-        else:
-            self.open_device_bt.setText("Open")
-            self.settings_panel.hide()
-
-    def __on_open_device_bt_click(self):
-        selected_device_serial = self.__get_selected_device_serial()
-
-        if self.__is_camera_in_opened_list(selected_device_serial):
-            camera = self.__get_opened_camera_by_serial(selected_device_serial)
-            self.__opened_cameras_list.remove(camera)
-            camera.close()
-            self.settings_panel.hide()
-            self.open_device_bt.setText("Open")
-        else:
-            self.__set_camera(selected_device_serial)
-
-    def __update_devices_list(self):
-        prev_device_serial = self.__get_selected_device_serial()
-        new_selected_index = 0
-
-        device_info_list = PylonCamera.get_devices_info()
-        model = QtGui.QStandardItemModel(0, 1)
-
-        for index, device_info in enumerate(device_info_list):
-            device_name = device_info["friendly_name"]
-            serial_number = device_info["serial_number"]
-            is_accessible = device_info["is_accessible"]
-            item = QtGui.QStandardItem(device_name)
-            item.setData(device_info, QtCore.Qt.UserRole)
-            # Если камера открыта в другом приложении
-            if not is_accessible and not self.__is_camera_in_opened_list(serial_number):
-                item.setEnabled(False)
-            model.appendRow(item)
-            if prev_device_serial == serial_number:
-                new_selected_index = index
-
-        self.device_list_combobox.setModel(model)
-        self.device_list_combobox.setCurrentIndex(new_selected_index)
-
-    def __create_gui_event_handlers(self):
-        # Devices
-        self.update_devices_bt.clicked.connect(self.__on_update_devices_list_but_click)
-        self.open_device_bt.clicked.connect(self.__on_open_device_bt_click)
-        self.device_list_combobox.currentIndexChanged[int].connect(self.__on_selected_device_change)
-        # Grab strategy
-        self.grab_strategy_combobox.currentIndexChanged['QString'].connect(self.__on_grab_strategy_change)
-        # Frame size
-        self.frame_width_spinbox.valueChanged.connect(self.__frame_width_change)
-        self.frame_height_spinbox.valueChanged.connect(self.__frame_height_change)
-        # Offsets
-        self.frame_offset_x_spinbox.valueChanged.connect(self.__frame_offset_x_change)
-        self.frame_offset_y_spinbox.valueChanged.connect(self.__frame_offset_y_change)
-        # Gain
-        self.gain_auto_combobox.currentIndexChanged['QString'].connect(self.__on_gain_auto_change)
-        self.gain_upper_limit_spinbox.valueChanged.connect(self.__on_gain_upper_limit_change)
-        self.gain_lower_limit_spinbox.valueChanged.connect(self.__on_gain_lower_limit_change)
-        self.gain_spinbox.valueChanged.connect(self.__on_gain_change)
-        # Gamma
-        self.gamma_spinbox.valueChanged.connect(self.__on_gamma_spinbox_change)
-        # Exposure time
-        self.exposure_auto_combobox.currentIndexChanged['QString'].connect(self.__on_exposure_auto_change)
-        self.exposure_upper_limit_spinbox.valueChanged.connect(self.__on_exposure_upper_limit_change)
-        self.exposure_lower_limit_spinbox.valueChanged.connect(self.__on_exposure_lower_limit_change)
-        self.exposure_time_spinbox.valueChanged.connect(self.__on_exposure_change)
-        # Pixel format
-        self.pixel_format_combobox.currentIndexChanged['QString'].connect(self.__on_pixel_format_change)
-        # Balance white
-        self.balance_white_auto_combobox.currentIndexChanged['QString'].connect(self.__on_balance_white_auto_change)
+    def __hide_settings(self) -> None:
+        self.settings_panel.hide()
+        self.open_device_bt.setText("Open")
 
     def __set_camera_settings(self) -> None:
-
-        # Block signals
+        # Block widget signals
         self.grab_strategy_combobox.blockSignals(True)
         self.frame_width_spinbox.blockSignals(True)
         self.frame_height_spinbox.blockSignals(True)
@@ -290,9 +256,53 @@ class PylonCameraWidget(QWidget):
         self.pixel_format_combobox.blockSignals(False)
         self.balance_white_auto_combobox.blockSignals(False)
 
+    # Вызывается один раз при создании
+    def __create_gui_event_handlers(self) -> None:
+        # Devices
+        self.update_devices_bt.clicked.connect(self.__on_update_devices_list_but_click)
+        self.open_device_bt.clicked.connect(self.__on_open_device_bt_click)
+        self.device_list_combobox.currentIndexChanged[int].connect(self.__on_selected_device_change)
+        # Grab strategy
+        self.grab_strategy_combobox.currentIndexChanged['QString'].connect(self.__on_grab_strategy_change)
+        # Frame size
+        self.frame_width_spinbox.valueChanged.connect(self.__frame_width_change)
+        self.frame_height_spinbox.valueChanged.connect(self.__frame_height_change)
+        # Offsets
+        self.frame_offset_x_spinbox.valueChanged.connect(self.__frame_offset_x_change)
+        self.frame_offset_y_spinbox.valueChanged.connect(self.__frame_offset_y_change)
+        # Gain
+        self.gain_auto_combobox.currentIndexChanged['QString'].connect(self.__on_gain_auto_change)
+        self.gain_upper_limit_spinbox.valueChanged.connect(self.__on_gain_upper_limit_change)
+        self.gain_lower_limit_spinbox.valueChanged.connect(self.__on_gain_lower_limit_change)
+        self.gain_spinbox.valueChanged.connect(self.__on_gain_change)
+        # Gamma
+        self.gamma_spinbox.valueChanged.connect(self.__on_gamma_spinbox_change)
+        # Exposure time
+        self.exposure_auto_combobox.currentIndexChanged['QString'].connect(self.__on_exposure_auto_change)
+        self.exposure_upper_limit_spinbox.valueChanged.connect(self.__on_exposure_upper_limit_change)
+        self.exposure_lower_limit_spinbox.valueChanged.connect(self.__on_exposure_lower_limit_change)
+        self.exposure_time_spinbox.valueChanged.connect(self.__on_exposure_change)
+        # Pixel format
+        self.pixel_format_combobox.currentIndexChanged['QString'].connect(self.__on_pixel_format_change)
+        # Balance white
+        self.balance_white_auto_combobox.currentIndexChanged['QString'].connect(self.__on_balance_white_auto_change)
+
     # ##########
     # GUI events
     # ##########
+
+    # Devices control
+    def __on_selected_device_change(self, _index):
+        self.__update_camera()
+
+    def __on_open_device_bt_click(self):
+        if self.__camera.is_open():
+            self.__camera.close()
+        else:
+            self.__camera.open()
+
+    def __on_update_devices_list_but_click(self):
+        self.__update_devices_list()
 
     # Grab strategy
     def __on_grab_strategy_change(self, value):
@@ -370,9 +380,11 @@ class PylonCameraWidget(QWidget):
     # Camera events
     # #############
 
-    # def __on_camera_opened(self, _camera: PylonCamera):
-    #     self.setEnabled(True)
-    #     self.__set_start_params()
+    def __on_camera_opened(self, _camera: PylonCamera):
+        self.__show_settings()
+
+    def __on_camera_closed(self, _camera: PylonCamera):
+        self.__hide_settings()
 
     def __on_camera_frame_change(self, _grab_result, _camera_serial, _frame_time):
         now = millis()

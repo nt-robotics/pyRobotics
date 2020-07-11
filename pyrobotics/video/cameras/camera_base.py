@@ -125,6 +125,9 @@ class Camera(object):
         self._error_event.unhandle(handler)
 
     def remove_all_handlers(self):
+        # Слушатели _opened_event не очищались когда remove_all_handlers() вызывался из PylonCamera.close()
+        # я убрал этот вызов и добавил очистку, надо проверить на что это повлияет
+        self._opened_event.clear_handlers()
         self._error_event.clear_handlers()
         self._closed_event.clear_handlers()
         self._stopped_event.clear_handlers()
