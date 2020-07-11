@@ -118,7 +118,6 @@ class PylonCamera(Camera):
         devices_info_list = cls.__tl_factory.EnumerateDevices()
         for device_info in devices_info_list:
             if device_info.GetSerialNumber() == serial:
-                print(type(device_info))
                 return device_info
         return None
 

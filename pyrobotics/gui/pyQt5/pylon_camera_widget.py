@@ -58,6 +58,26 @@ class PylonCameraWidget(QWidget):
     # Control camera devices
     # #######################
 
+    def get_camera(self) -> PylonCamera:
+        return self.__camera
+
+    def __set_camera(self, camera: PylonCamera) -> None:
+        if self.__camera is not None and self.__camera.get_serial_number() == camera.get_serial_number():
+            return
+
+        self.__unset_camera()
+
+        self.__camera = camera
+        self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
+        self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
+        self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
+        self.__camera.add_opened_handler(self.__on_camera_opened)
+        self.__camera.add_closed_handler(self.__on_camera_closed)
+        if self.__camera.is_open():
+            self.__show_settings()
+        else:
+            self.__hide_settings()
+
     def __update_devices_list(self) -> None:
         model = QtGui.QStandardItemModel(0, 1)
         for index, camera in enumerate(PylonCamera.get_list()):
@@ -67,12 +87,12 @@ class PylonCameraWidget(QWidget):
             item = QtGui.QStandardItem(device_name)
             item.setData(serial_number, QtCore.Qt.UserRole)
 
-            print(camera.get_friendly_name())
-            print("is_open_in_another_application:", camera.is_open_in_another_application())
-            print("is_open:", camera.is_open())
-            print("is_device_accessible:", camera.is_device_accessible())
-            print("is_device_removed:", camera.is_device_removed())
-            print("---------------------------")
+            # print(camera.get_friendly_name())
+            # print("is_open_in_another_application:", camera.is_open_in_another_application())
+            # print("is_open:", camera.is_open())
+            # print("is_device_accessible:", camera.is_device_accessible())
+            # print("is_device_removed:", camera.is_device_removed())
+            # print("---------------------------")
 
             # Если камера открыта в другом приложении или отключена после открытия,
             # то не добавляем ее в список
@@ -100,6 +120,7 @@ class PylonCameraWidget(QWidget):
             self.device_list_combobox.setEnabled(True)
             self.__set_camera(PylonCamera.get_camera_by_serial(selected_serial))
         else:
+            self.device_list_combobox.addItem("No cameras available")
             self.open_device_bt.setText("Open")
             self.open_device_bt.setEnabled(False)
             self.device_list_combobox.setEnabled(False)
@@ -114,23 +135,6 @@ class PylonCameraWidget(QWidget):
             self.__camera.remove_opened_handler(self.__on_camera_opened)
             self.__camera.remove_closed_handler(self.__on_camera_closed)
             self.__camera = None
-
-    def __set_camera(self, camera: PylonCamera) -> None:
-        if self.__camera is not None and self.__camera.get_serial_number() == camera.get_serial_number():
-            return
-
-        self.__unset_camera()
-
-        self.__camera = camera
-        self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
-        self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
-        self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
-        self.__camera.add_opened_handler(self.__on_camera_opened)
-        self.__camera.add_closed_handler(self.__on_camera_closed)
-        if self.__camera.is_open():
-            self.__show_settings()
-        else:
-            self.__hide_settings()
 
     def __show_settings(self) -> None:
         self.__set_camera_settings()
