@@ -51,6 +51,7 @@ class PylonCameraWidget(QWidget):
         self.__cameras_count = 0
 
         self.__cameras_count_change_event = Event()
+        self.__camera_change_event = Event()
 
         self.__create_gui_event_handlers()
         self.__update_devices_list()
@@ -62,15 +63,24 @@ class PylonCameraWidget(QWidget):
     # Widget events
     # #######################
 
-    def add_cameras_count_change_event_handler(self, handler):
+    def add_camera_change_handler(self, handler):
+        self.__camera_change_event.handle(handler)
+
+    def remove_camera_change_handler(self, handler):
+        self.__camera_change_event.unhandle(handler)
+
+    def add_cameras_count_change_handler(self, handler):
         self.__cameras_count_change_event.handle(handler)
 
-    def remove_cameras_count_change_event_handler(self, handler):
+    def remove_cameras_count_change_handler(self, handler):
         self.__cameras_count_change_event.unhandle(handler)
 
     # #######################
     # Control camera devices
     # #######################
+
+    # def set_select_camera_enabled(self, value: bool):
+    #     self.device_list_combobox.setEnabled(value)
 
     def get_cameras_count(self) -> int:
         return self.__cameras_count
@@ -81,19 +91,20 @@ class PylonCameraWidget(QWidget):
     def __set_camera(self, camera: PylonCamera) -> None:
         if self.__camera is not None and self.__camera.get_serial_number() == camera.get_serial_number():
             return
-
         self.__unset_camera()
-
         self.__camera = camera
         self.__camera.add_grab_started_handler(self.__on_camera_start_grabbing)
         self.__camera.add_grab_stopped_handler(self.__on_camera_stop_grabbing)
         self.__camera.add_frame_change_handler(self.__on_camera_frame_change)
         self.__camera.add_opened_handler(self.__on_camera_opened)
         self.__camera.add_closed_handler(self.__on_camera_closed)
+        self.__camera.add_error_handler(self.__on_camera_error)
         if self.__camera.is_open():
             self.__show_settings()
         else:
             self.__hide_settings()
+
+        self.__camera_change_event.fire(self.__camera)
 
     def __update_devices_list(self) -> None:
 
@@ -161,6 +172,7 @@ class PylonCameraWidget(QWidget):
             self.__camera.remove_frame_change_handler(self.__on_camera_frame_change)
             self.__camera.remove_opened_handler(self.__on_camera_opened)
             self.__camera.remove_closed_handler(self.__on_camera_closed)
+            self.__camera.remove_error_handler(self.__on_camera_error)
             self.__camera = None
 
     def __show_settings(self) -> None:
@@ -441,3 +453,10 @@ class PylonCameraWidget(QWidget):
         self.frame_height_spinbox.setEnabled(True)
         self.pixel_format_combobox.setEnabled(True)
         self.fps_label.setText("0.00")
+
+    @staticmethod
+    def __on_camera_error(message):
+        print("CAMERA ERROR")
+        print(message)
+        # self.__unset_camera()
+        # self.__update_devices_list()

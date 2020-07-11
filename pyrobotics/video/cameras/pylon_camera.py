@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Tuple
 
 from pypylon import pylon
+from pypylon.genicam import GenericException
 from pypylon.pylon import DeviceInfo
 
 from pyrobotics.event import Event
@@ -217,6 +218,9 @@ class PylonCamera(Camera):
                 self.__pylon_camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
             except SystemError:
                 print("Grab thread error")
+            except GenericException as error:
+                # Camera removed
+                self._error_event.fire(error)
 
     # ###########################
     # Parameters
@@ -437,7 +441,10 @@ class _GrabEventHandler(pylon.ImageEventHandler):
             time = datetime.now()
             self.__frame_change_event.fire(grab_result, camera.DeviceSerialNumber.GetValue(), time)
         else:
-            print("[PYLON CAMERA] Grab Error: ", grab_result.ErrorCode, grab_result.ErrorDescription)
+            try:
+                print("[PYLON CAMERA] Grab Error: ", grab_result.ErrorCode, grab_result.ErrorDescription)
+            except UnicodeDecodeError:
+                print("'utf-8' codec can't decode byte 0xcf in position 0: invalid continuation byte")
 
 
 class _ConfigurationEventHandler(pylon.ConfigurationEventHandler):
