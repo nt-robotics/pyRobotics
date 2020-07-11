@@ -4,6 +4,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QWidget
 from PyQt5.uic import loadUi
 
+from pyrobotics.event import Event
 from pyrobotics.utils.time_utils import millis
 from pyrobotics.video.cameras.pylon_camera import PylonCamera
 
@@ -47,6 +48,9 @@ class PylonCameraWidget(QWidget):
         self.settings_panel.hide()
 
         self.__camera = None
+        self.__cameras_count = 0
+
+        self.__cameras_count_change_event = Event()
 
         self.__create_gui_event_handlers()
         self.__update_devices_list()
@@ -55,8 +59,21 @@ class PylonCameraWidget(QWidget):
         self.__last_update_time = millis()
 
     # #######################
+    # Widget events
+    # #######################
+
+    def add_cameras_count_change_event_handler(self, handler):
+        self.__cameras_count_change_event.handle(handler)
+
+    def remove_cameras_count_change_event_handler(self, handler):
+        self.__cameras_count_change_event.unhandle(handler)
+
+    # #######################
     # Control camera devices
     # #######################
+
+    def get_cameras_count(self) -> int:
+        return self.__cameras_count
 
     def get_camera(self) -> PylonCamera:
         return self.__camera
@@ -79,6 +96,9 @@ class PylonCameraWidget(QWidget):
             self.__hide_settings()
 
     def __update_devices_list(self) -> None:
+
+        cameras_count = self.__cameras_count
+
         model = QtGui.QStandardItemModel(0, 1)
         for index, camera in enumerate(PylonCamera.get_list()):
             camera: PylonCamera = camera
@@ -94,7 +114,7 @@ class PylonCameraWidget(QWidget):
             # print("is_device_removed:", camera.is_device_removed())
             # print("---------------------------")
 
-            # Если камера открыта в другом приложении или отключена после открытия,
+            # Если камера открыта в другом приложении,
             # то не добавляем ее в список
             if not camera.is_open_in_another_application():
                 model.appendRow(item)
@@ -102,6 +122,9 @@ class PylonCameraWidget(QWidget):
 
         self.device_list_combobox.blockSignals(True)
         self.device_list_combobox.setModel(model)
+
+        self.__cameras_count = self.device_list_combobox.count()
+
         if self.__camera is not None:
             index = self.device_list_combobox.findData(self.__camera.get_serial_number())
             if index > -1:
@@ -111,6 +134,10 @@ class PylonCameraWidget(QWidget):
         else:
             self.__update_camera()
         self.device_list_combobox.blockSignals(False)
+
+        # Если изменилось количество камер кидаем событие
+        if self.__cameras_count != cameras_count:
+            self.__cameras_count_change_event.fire(self.__cameras_count)
 
     def __update_camera(self) -> None:
         # Если подключена хотябя одна камера
